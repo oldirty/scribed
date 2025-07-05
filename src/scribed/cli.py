@@ -21,13 +21,13 @@ from .daemon import ScribedDaemon
 @click.pass_context
 def cli(ctx: click.Context, config: Optional[Path]) -> None:
     """Scribed - Audio Transcription Daemon.
-    
+
     A powerful audio transcription service with wake word detection,
     voice commands, and batch processing capabilities.
     """
     # Ensure context object exists
     ctx.ensure_object(dict)
-    
+
     # Load configuration
     if config:
         ctx.obj["config"] = Config.from_file(str(config))
@@ -46,18 +46,18 @@ def cli(ctx: click.Context, config: Optional[Path]) -> None:
 def start(ctx: click.Context, daemon: bool) -> None:
     """Start the transcription daemon."""
     config: Config = ctx.obj["config"]
-    
+
     if daemon:
         click.echo("Daemon mode not yet implemented. Running in foreground...")
-    
+
     try:
         click.echo("Starting Scribed daemon...")
         scribed_daemon = ScribedDaemon(config)
         scribed_daemon.setup_signal_handlers()
-        
+
         # Run the daemon
         asyncio.run(scribed_daemon.start())
-        
+
     except KeyboardInterrupt:
         click.echo("\\nShutdown requested by user")
     except Exception as e:
@@ -79,9 +79,10 @@ def stop(ctx: click.Context) -> None:
 def status(ctx: click.Context) -> None:
     """Check daemon status."""
     config: Config = ctx.obj["config"]
-    
+
     try:
         import requests
+
         response = requests.get(f"http://{config.api.host}:{config.api.port}/status")
         if response.status_code == 200:
             status_data = response.json()
@@ -108,7 +109,7 @@ def status(ctx: click.Context) -> None:
 def config_cmd(ctx: click.Context, output: Optional[Path]) -> None:
     """Manage daemon configuration."""
     config: Config = ctx.obj["config"]
-    
+
     if output:
         config.to_file(str(output))
         click.echo(f"Configuration saved to: {output}")
@@ -136,20 +137,20 @@ def logs(ctx: click.Context, lines: int) -> None:
     """View daemon logs."""
     config: Config = ctx.obj["config"]
     log_file = Path(config.output.log_file_path)
-    
+
     if not log_file.exists():
         click.echo("Log file not found", err=True)
         return
-    
+
     try:
         # Read last N lines
         with open(log_file, "r", encoding="utf-8") as f:
             log_lines = f.readlines()
-        
+
         # Show last N lines
         for line in log_lines[-lines:]:
             click.echo(line.rstrip())
-            
+
     except Exception as e:
         click.echo(f"Error reading log file: {e}", err=True)
 
@@ -169,68 +170,81 @@ def logs(ctx: click.Context, lines: int) -> None:
     help="Transcription provider to use",
 )
 @click.pass_context
-def transcribe(ctx: click.Context, audio_file: Path, output: Optional[Path], provider: Optional[str]) -> None:
+def transcribe(
+    ctx: click.Context,
+    audio_file: Path,
+    output: Optional[Path],
+    provider: Optional[str],
+) -> None:
     """Transcribe an audio file directly (without daemon)."""
     import asyncio
     from scribed.transcription.service import TranscriptionService
-    
+
     config: Config = ctx.obj["config"]
-    
+
     # Override provider if specified
     if provider:
         config.transcription.provider = provider
-    
+
     click.echo(f"Transcribing: {audio_file}")
     click.echo(f"Provider: {config.transcription.provider}")
-    
+
     async def run_transcription():
         try:
             # Initialize transcription service
             service = TranscriptionService(config.transcription.dict())
-            
+
             if not service.is_available():
                 click.echo("Error: Transcription service not available", err=True)
                 engine_info = service.get_engine_info()
                 click.echo(f"Engine info: {engine_info}", err=True)
                 return
-            
+
             # Transcribe the file
             click.echo("Processing...")
             result = await service.transcribe_file(audio_file)
-            
+
             if result.status.value == "completed":
-                click.echo(f"✓ Transcription completed in {result.processing_time:.2f}s")
-                
+                click.echo(
+                    f"✓ Transcription completed in {result.processing_time:.2f}s"
+                )
+
                 # Determine output file
                 if output:
                     output_file = output
                 else:
                     output_file = audio_file.with_suffix(".txt")
-                
+
                 # Write transcription
                 content = result.text
                 if result.segments:
                     content += "\n\n## Segments\n"
                     for i, segment in enumerate(result.segments, 1):
-                        start = f"{segment.start_time:.2f}s" if segment.start_time else "N/A"
+                        start = (
+                            f"{segment.start_time:.2f}s"
+                            if segment.start_time
+                            else "N/A"
+                        )
                         end = f"{segment.end_time:.2f}s" if segment.end_time else "N/A"
                         content += f"{i}. [{start} - {end}] {segment.text}\n"
-                
+
                 with open(output_file, "w", encoding="utf-8") as f:
                     f.write(content)
-                
+
                 click.echo(f"Transcript saved to: {output_file}")
-                
+
                 # Show preview
-                preview = result.text[:200] + "..." if len(result.text) > 200 else result.text
+                preview = (
+                    result.text[:200] + "..." if len(result.text) > 200 else result.text
+                )
                 click.echo(f"\nPreview:\n{preview}")
-                
+
             else:
                 click.echo(f"✗ Transcription failed: {result.error}", err=True)
-                
+
         except Exception as e:
             click.echo(f"Error: {e}", err=True)
-    
+
     # Run the transcription
     asyncio.run(run_transcription())
 

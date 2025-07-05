@@ -22,6 +22,7 @@ A powerful audio transcription daemon that provides wake word detection, voice c
 - [x] **Multiple Audio Formats**: Support for .wav, .mp3, .flac, .mp4, .ogg, and more
 - [x] **Wake Word Detection**: Real-time wake word activation using Picovoice Porcupine
 - [x] **Real-time Transcription**: Microphone input with live transcription and wake word activation
+- [x] **Voice Commands**: Secure power words for voice-activated command execution with safety controls
 - [x] **Testing & CI**: Comprehensive unit tests with pytest and GitHub Actions CI/CD pipeline
 - [x] **Development Tools**: Pre-commit hooks, black formatting, mypy type checking, and development Makefile
 - [x] **Documentation**: Example configuration, API documentation, and development setup guides
@@ -31,9 +32,8 @@ A powerful audio transcription daemon that provides wake word detection, voice c
 - [x] **Multiple transcription engine support** (Whisper ✅, OpenAI API ✅, Google Speech-to-Text 🚧)
 - [x] **Wake word detection with Picovoice Porcupine** ✅
 - [x] **Real-time transcription with low latency** ✅
-- [ ] Voice command execution with security controls
+- [x] **Voice command execution with security controls** ✅
 - [ ] Desktop GUI with system tray indicator
-- [ ] Advanced audio format support (additional formats)
 - [ ] Performance monitoring and resource management
 
 ## Quick Start
@@ -48,11 +48,20 @@ cd scribed
 # Install in development mode
 pip install -e ".[dev]"
 
-# For GUI support
-pip install -e ".[gui]"
+# For wake word support
+pip install -e ".[wake_word]"
 
 # For Whisper support
 pip install -e ".[whisper]"
+```
+
+**Windows Users:** Use `.\make.bat` instead of `make` for development commands:
+
+```cmd
+# Windows equivalent of make commands
+.\make.bat install-dev
+.\make.bat test
+.\make.bat format
 ```
 
 ### Basic Usage
@@ -151,6 +160,37 @@ Scribed now supports hands-free voice activation using wake words! Simply say yo
 Choose from: `porcupine`, `alexa`, `hey google`, `hey siri`, `jarvis`, `computer`, `americano`, `blueberry`, `bumblebee`, `grapefruit`, `grasshopper`, `picovoice`, `pineapple`, `terminator`
 
 📖 **For detailed setup instructions, see [WAKE_WORD_SETUP.md](WAKE_WORD_SETUP.md)**
+
+## Windows Compatibility 🪟
+
+Scribed runs well on Windows with the following considerations:
+
+### ✅ Fully Supported
+- All Python components and dependencies
+- Audio processing (PyAudio, sounddevice)
+- Whisper transcription engines
+- Picovoice Porcupine wake word detection
+- Configuration and CLI commands
+
+### 🔧 Windows-Specific Setup
+- Use `make.bat` instead of `make` for development commands
+- Power words use Windows commands (`dir`, `echo`, `cd`) by default
+- Install Microsoft C++ Build Tools if needed for some dependencies
+
+### 💡 Tips for Windows Users
+
+```cmd
+# Use PowerShell or Command Prompt
+pip install -e ".[dev,wake_word]"
+
+# Development commands
+.\make.bat install-dev
+.\make.bat test
+.\make.bat format
+
+# Run the daemon
+scribed daemon --config config.yaml
+```
 
 ## Development
 
