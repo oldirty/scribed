@@ -123,6 +123,8 @@ class OutputConfig(BaseModel):
     format: str = Field(default="txt")
     log_to_file: bool = Field(default=True)
     log_file_path: str = Field(default="./logs/transcription.log")
+    enable_clipboard: bool = Field(default=False)
+    clipboard_on_final: bool = Field(default=True)
 
     @field_validator("format")
     @classmethod
