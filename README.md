@@ -1,9 +1,11 @@
 # Scribed - Audio Transcription Daemon
 
-[![CI](https://github.com/scribed/scribed/actions/workflows/ci.yml/badge.svg)](https://github.com/scribed/scribed/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/scribed/scribed/branch/main/graph/badge.svg)](https://codecov.io/gh/scribed/scribed)
+[![CI](https://github.com/oldirty/scribed/actions/workflows/ci.yml/badge.svg)](https://github.com/scribed/scribed/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/oldirty/scribed/branch/main/graph/badge.svg)](https://codecov.io/gh/scribed/scribed)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License: GPLv3](https://img.shields.io/badge/License-GPLv3-yellow.svg)](https://opensource.org/license/gpl-3-0)
+
+## This is all generated code, that I have yet to fully review. Run at your own risk...
 
 A powerful audio transcription daemon that provides wake word detection, voice commands, and both real-time and batch transcription capabilities.
 
