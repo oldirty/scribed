@@ -40,8 +40,10 @@ jobs:
         include:
           - os: ubuntu-22.04
             package_type: deb
+            artifact_name: linux-deb-packages-22.04
           - os: ubuntu-24.04
             package_type: deb
+            artifact_name: linux-deb-packages-24.04
     steps:
     - uses: actions/checkout@v4
     
@@ -113,7 +115,7 @@ jobs:
     - name: Upload DEB artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: linux-deb-packages
+        name: ${{ matrix.artifact_name }}
         path: packages/*.deb
 
   # Build RPM packages
@@ -187,7 +189,8 @@ jobs:
 
     - name: Prepare RPM source
       run: |
-        cp dist/scribed-*.tar.gz ~/rpmbuild/SOURCES/
+        VERSION=${GITHUB_REF#refs/tags/v}
+        cp dist/scribed-${VERSION}.tar.gz ~/rpmbuild/SOURCES/
 
     - name: Build RPM
       run: |
@@ -324,8 +327,9 @@ jobs:
         # Copy Python packages
         cp artifacts/python-packages/* release-assets/
         
-        # Copy Linux packages
-        cp artifacts/linux-deb-packages/* release-assets/ 2>/dev/null || true
+        # Copy Linux packages (from both Ubuntu versions)
+        cp artifacts/linux-deb-packages-22.04/* release-assets/ 2>/dev/null || true
+        cp artifacts/linux-deb-packages-24.04/* release-assets/ 2>/dev/null || true
         cp artifacts/linux-rpm-packages/* release-assets/ 2>/dev/null || true
         
         # Copy Windows packages
@@ -410,4 +414,4 @@ jobs:
         TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
       run: |
         pip install twine
-        twine upload python-packages/*.whl python-packages/*.tar.gz
+        twine upload artifacts/python-packages/*.whl artifacts/python-packages/*.tar.gz
