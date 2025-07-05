@@ -3,7 +3,7 @@
 [![CI](https://github.com/scribed/scribed/actions/workflows/ci.yml/badge.svg)](https://github.com/scribed/scribed/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/scribed/scribed/branch/main/graph/badge.svg)](https://codecov.io/gh/scribed/scribed)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: GPLv3](https://img.shields.io/badge/License-GPLv3-yellow.svg)](https://opensource.org/license/gpl-3-0)
 
 A powerful audio transcription daemon that provides wake word detection, voice commands, and both real-time and batch transcription capabilities.
 
