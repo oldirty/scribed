@@ -164,8 +164,12 @@ class ScribedDaemon:
                 self.logger.info(f"Final transcription saved to: {output_file}")
 
                 # Copy to clipboard if enabled
-                if self.config.output.enable_clipboard and self.config.output.clipboard_on_final:
+                if (
+                    self.config.output.enable_clipboard
+                    and self.config.output.clipboard_on_final
+                ):
                     from .clipboard import set_clipboard_text
+
                     if set_clipboard_text(transcription):
                         self.logger.info("Final transcription copied to clipboard")
                     else:

@@ -32,7 +32,7 @@ class StopTranscriptionRequest(BaseModel):
 
 class RecordToClipboardRequest(BaseModel):
     """Request model for recording audio and transcribing to clipboard."""
-    
+
     duration: int = 10
     provider: Optional[str] = None
 
@@ -49,7 +49,7 @@ class TranscriptionJobResponse(BaseModel):
 
 class ClipboardTranscriptionResponse(BaseModel):
     """Response model for clipboard transcription."""
-    
+
     success: bool
     text: Optional[str] = None
     processing_time: Optional[float] = None
@@ -137,7 +137,7 @@ class APIServer:
                 if not is_clipboard_available():
                     return ClipboardTranscriptionResponse(
                         success=False,
-                        error="Clipboard functionality not available. On Linux, install xclip or xsel."
+                        error="Clipboard functionality not available. On Linux, install xclip or xsel.",
                     )
 
                 # Get config with optional provider override
@@ -145,7 +145,9 @@ class APIServer:
                 if request.provider:
                     config["provider"] = request.provider
 
-                logger.info(f"Starting {request.duration}s recording for clipboard transcription")
+                logger.info(
+                    f"Starting {request.duration}s recording for clipboard transcription"
+                )
                 logger.info(f"Using provider: {config['provider']}")
 
                 # Recording parameters
@@ -157,18 +159,20 @@ class APIServer:
                     int(request.duration * sample_rate),
                     samplerate=sample_rate,
                     channels=channels,
-                    dtype=np.int16
+                    dtype=np.int16,
                 )
-                
+
                 # Wait for recording to complete
                 sd.wait()
 
                 # Save to temporary file
-                with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_file:
+                with tempfile.NamedTemporaryFile(
+                    suffix=".wav", delete=False
+                ) as temp_file:
                     temp_path = Path(temp_file.name)
-                    
+
                     # Write WAV file
-                    with wave.open(str(temp_path), 'wb') as wav_file:
+                    with wave.open(str(temp_path), "wb") as wav_file:
                         wav_file.setnchannels(channels)
                         wav_file.setsampwidth(2)  # 16-bit
                         wav_file.setframerate(sample_rate)
@@ -182,7 +186,7 @@ class APIServer:
                         engine_info = service.get_engine_info()
                         return ClipboardTranscriptionResponse(
                             success=False,
-                            error=f"Transcription service not available: {engine_info}"
+                            error=f"Transcription service not available: {engine_info}",
                         )
 
                     # Transcribe the recording
@@ -191,22 +195,23 @@ class APIServer:
                     if result.status.value == "completed":
                         # Copy to clipboard
                         if set_clipboard_text(result.text):
-                            logger.info("Transcription copied to clipboard successfully")
+                            logger.info(
+                                "Transcription copied to clipboard successfully"
+                            )
                             return ClipboardTranscriptionResponse(
                                 success=True,
                                 text=result.text,
-                                processing_time=result.processing_time
+                                processing_time=result.processing_time,
                             )
                         else:
                             return ClipboardTranscriptionResponse(
                                 success=False,
                                 text=result.text,
-                                error="Failed to copy to clipboard"
+                                error="Failed to copy to clipboard",
                             )
                     else:
                         return ClipboardTranscriptionResponse(
-                            success=False,
-                            error=f"Transcription failed: {result.error}"
+                            success=False, error=f"Transcription failed: {result.error}"
                         )
 
                 finally:

@@ -82,9 +82,11 @@ def status(ctx: click.Context) -> None:
 
     try:
         import requests
-        
+
         # Check daemon status first
-        response = requests.get(f"http://{config.api.host}:{config.api.port}/status", timeout=5)
+        response = requests.get(
+            f"http://{config.api.host}:{config.api.port}/status", timeout=5
+        )
         if response.status_code == 200:
             status_data = response.json()
             click.echo(f"Status: {status_data['status']}")
@@ -292,40 +294,42 @@ def record_to_clipboard(
         # Use daemon API
         try:
             import requests
-            
+
             # Prepare request data
-            request_data: dict = {
-                "duration": duration
-            }
+            request_data: dict = {"duration": duration}
             if provider:
                 request_data["provider"] = provider
 
             click.echo(f"🎤 Recording for {duration} seconds via daemon...")
-            
+
             # Make API request
             response = requests.post(
                 f"http://{config.api.host}:{config.api.port}/record-to-clipboard",
                 json=request_data,
-                timeout=duration + 30  # Give extra time for processing
+                timeout=duration + 30,  # Give extra time for processing
             )
-            
+
             if response.status_code == 200:
                 result = response.json()
                 if result["success"]:
                     click.echo("✅ Transcription copied to clipboard!")
-                    
+
                     if not silent and result.get("text"):
                         preview = (
-                            result["text"][:200] + "..." 
-                            if len(result["text"]) > 200 
+                            result["text"][:200] + "..."
+                            if len(result["text"]) > 200
                             else result["text"]
                         )
                         click.echo(f"\n📝 Transcribed text:\n{preview}")
-                    
+
                     if result.get("processing_time"):
-                        click.echo(f"⏱️  Processing time: {result['processing_time']:.2f}s")
+                        click.echo(
+                            f"⏱️  Processing time: {result['processing_time']:.2f}s"
+                        )
                 else:
-                    click.echo(f"❌ Failed: {result.get('error', 'Unknown error')}", err=True)
+                    click.echo(
+                        f"❌ Failed: {result.get('error', 'Unknown error')}", err=True
+                    )
             else:
                 click.echo(f"❌ API request failed: {response.status_code}", err=True)
                 try:
@@ -333,12 +337,14 @@ def record_to_clipboard(
                     click.echo(f"Error: {error_detail}", err=True)
                 except Exception:
                     click.echo(f"Error: {response.text}", err=True)
-                    
+
         except ImportError:
             click.echo("❌ requests library not available", err=True)
         except Exception as e:
             if "ConnectionError" in str(type(e)):
-                click.echo("❌ Cannot connect to daemon. Make sure it's running.", err=True)
+                click.echo(
+                    "❌ Cannot connect to daemon. Make sure it's running.", err=True
+                )
                 click.echo("Try running without --use-daemon flag for direct mode.")
             else:
                 click.echo(f"❌ Error: {e}", err=True)
@@ -365,7 +371,9 @@ def _record_to_clipboard_direct(
     # Check clipboard availability
     if not is_clipboard_available():
         click.echo("Error: Clipboard functionality not available", err=True)
-        click.echo("On Linux, install xclip or xsel: sudo apt-get install xclip", err=True)
+        click.echo(
+            "On Linux, install xclip or xsel: sudo apt-get install xclip", err=True
+        )
         return
 
     # Override provider if specified
@@ -390,15 +398,15 @@ def _record_to_clipboard_direct(
             channels = 1
 
             click.echo("🎤 Recording started...")
-            
+
             # Record audio
             audio_data = sd.rec(
                 int(duration * sample_rate),
                 samplerate=sample_rate,
                 channels=channels,
-                dtype=np.int16
+                dtype=np.int16,
             )
-            
+
             # Wait for recording to complete or user interrupt
             try:
                 sd.wait()
@@ -411,9 +419,9 @@ def _record_to_clipboard_direct(
             # Save to temporary file
             with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_file:
                 temp_path = Path(temp_file.name)
-                
+
                 # Write WAV file
-                with wave.open(str(temp_path), 'wb') as wav_file:
+                with wave.open(str(temp_path), "wb") as wav_file:
                     wav_file.setnchannels(channels)
                     wav_file.setsampwidth(2)  # 16-bit
                     wav_file.setframerate(sample_rate)
@@ -437,16 +445,16 @@ def _record_to_clipboard_direct(
                     # Copy to clipboard
                     if set_clipboard_text(result.text):
                         click.echo("✅ Transcription copied to clipboard!")
-                        
+
                         if not silent:
                             # Show preview
                             preview = (
-                                result.text[:200] + "..." 
-                                if len(result.text) > 200 
+                                result.text[:200] + "..."
+                                if len(result.text) > 200
                                 else result.text
                             )
                             click.echo(f"\n📝 Transcribed text:\n{preview}")
-                        
+
                         click.echo(f"⏱️  Processing time: {result.processing_time:.2f}s")
                     else:
                         click.echo("❌ Failed to copy to clipboard", err=True)
@@ -505,7 +513,9 @@ def transcribe_to_clipboard(
     silent: bool,
 ) -> None:
     """Record audio and transcribe directly to clipboard (legacy command)."""
-    click.echo("⚠️  Note: 'transcribe-to-clipboard' is deprecated. Use 'record-to-clipboard' instead.")
+    click.echo(
+        "⚠️  Note: 'transcribe-to-clipboard' is deprecated. Use 'record-to-clipboard' instead."
+    )
     # Call the new command function
     _record_to_clipboard_direct(ctx, duration, provider, silent)
 
