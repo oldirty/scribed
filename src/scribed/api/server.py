@@ -3,6 +3,7 @@
 import asyncio
 import logging
 from typing import TYPE_CHECKING, Optional
+from pathlib import Path
 import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
@@ -35,6 +36,14 @@ class TranscriptionJobResponse(BaseModel):
     progress: float
     result: Optional[str] = None
     error: Optional[str] = None
+
+
+class RecordToClipboardRequest(BaseModel):
+    """Request model for recording audio and transcribing to clipboard."""
+
+    duration: int = 10
+    provider: Optional[str] = None
+    silent: bool = False
 
 
 class APIServer:
@@ -116,6 +125,118 @@ class APIServer:
         async def health_check():
             """Health check endpoint."""
             return JSONResponse({"status": "healthy", "service": "scribed"})
+
+        @self.app.post("/record-to-clipboard")
+        async def record_to_clipboard(request: RecordToClipboardRequest):
+            """Record audio and transcribe directly to clipboard."""
+            try:
+                from ..transcription.service import TranscriptionService
+                from ..clipboard import ClipboardManager
+                from ..audio.microphone_input import AsyncMicrophoneInput
+                import tempfile
+                import asyncio
+                import wave
+                import numpy as np
+                import sounddevice as sd
+
+                # Check clipboard availability
+                clipboard = ClipboardManager()
+                if not clipboard._backend:
+                    raise HTTPException(
+                        status_code=500, detail="Clipboard functionality not available"
+                    )
+
+                # Use provided provider or default from config
+                transcription_config = self.config.transcription.model_dump()
+                if request.provider:
+                    transcription_config["provider"] = request.provider
+
+                # Initialize transcription service
+                service = TranscriptionService(transcription_config)
+                if not service.is_available():
+                    raise HTTPException(
+                        status_code=500, detail="Transcription service not available"
+                    )
+
+                # Recording parameters
+                sample_rate = 16000
+                channels = 1
+
+                # Record audio using sounddevice
+                audio_data = sd.rec(
+                    int(request.duration * sample_rate),
+                    samplerate=sample_rate,
+                    channels=channels,
+                    dtype=np.int16,
+                )
+
+                # Wait for recording to complete
+                sd.wait()
+
+                # Save to temporary file
+                with tempfile.NamedTemporaryFile(
+                    suffix=".wav", delete=False
+                ) as temp_file:
+                    temp_path = Path(temp_file.name)
+
+                    # Write WAV file
+                    with wave.open(str(temp_path), "wb") as wav_file:
+                        wav_file.setnchannels(channels)
+                        wav_file.setsampwidth(2)  # 16-bit
+                        wav_file.setframerate(sample_rate)
+                        wav_file.writeframes(audio_data.tobytes())
+
+                try:
+                    # Transcribe the recording
+                    result = await service.transcribe_file(temp_path)
+
+                    if result.status.value == "completed":
+                        # Copy to clipboard
+                        if clipboard.set_text(result.text):
+                            response_data = {
+                                "status": "success",
+                                "message": "Transcription copied to clipboard",
+                                "processing_time": result.processing_time,
+                                "text_length": len(result.text),
+                            }
+
+                            if not request.silent:
+                                response_data["text"] = (
+                                    result.text[:200] + "..."
+                                    if len(result.text) > 200
+                                    else result.text
+                                )
+
+                            return JSONResponse(response_data)
+                        else:
+                            raise HTTPException(
+                                status_code=500,
+                                detail="Failed to copy transcription to clipboard",
+                            )
+                    else:
+                        raise HTTPException(
+                            status_code=500,
+                            detail=f"Transcription failed: {result.error}",
+                        )
+
+                finally:
+                    # Clean up temporary file
+                    try:
+                        temp_path.unlink()
+                    except Exception:
+                        pass
+
+            except ImportError as e:
+                if "sounddevice" in str(e):
+                    raise HTTPException(
+                        status_code=500,
+                        detail="sounddevice not installed. Install with: pip install sounddevice",
+                    )
+                else:
+                    raise HTTPException(status_code=500, detail=f"Import error: {e}")
+            except Exception as e:
+                logger.error(f"Error in record-to-clipboard: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
 
     async def start(self) -> None:
         """Start the API server."""

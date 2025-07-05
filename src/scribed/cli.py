@@ -249,6 +249,156 @@ def transcribe(
     asyncio.run(run_transcription())
 
 
+@cli.command()
+@click.option(
+    "--duration",
+    "-d",
+    default=10,
+    help="Recording duration in seconds",
+)
+@click.option(
+    "--provider",
+    "-p",
+    type=click.Choice(["whisper", "openai"]),
+    help="Transcription provider to use",
+)
+@click.option(
+    "--silent",
+    "-s",
+    is_flag=True,
+    help="Don't print the transcribed text to console",
+)
+@click.pass_context
+def transcribe_to_clipboard(
+    ctx: click.Context,
+    duration: int,
+    provider: Optional[str],
+    silent: bool,
+) -> None:
+    """Record audio and transcribe directly to clipboard."""
+    import asyncio
+    import tempfile
+    from pathlib import Path
+    from scribed.transcription.service import TranscriptionService
+    from scribed.clipboard import set_clipboard_text, is_clipboard_available
+
+    config: Config = ctx.obj["config"]
+
+    # Check clipboard availability
+    if not is_clipboard_available():
+        click.echo("Error: Clipboard functionality not available", err=True)
+        click.echo(
+            "On Linux, install xclip or xsel: sudo apt-get install xclip", err=True
+        )
+        return
+
+    # Override provider if specified
+    if provider:
+        config.transcription.provider = provider
+
+    click.echo(f"Recording for {duration} seconds...")
+    click.echo(f"Provider: {config.transcription.provider}")
+    click.echo("Press Ctrl+C to stop early")
+
+    async def run_recording_and_transcription():
+        try:
+            # Import audio recording functionality
+            import sounddevice as sd
+            import numpy as np
+            import wave
+
+            # Recording parameters
+            sample_rate = 16000
+            channels = 1
+
+            click.echo("🎤 Recording started...")
+
+            # Record audio
+            audio_data = sd.rec(
+                int(duration * sample_rate),
+                samplerate=sample_rate,
+                channels=channels,
+                dtype=np.int16,
+            )
+
+            # Wait for recording to complete or user interrupt
+            try:
+                sd.wait()
+            except KeyboardInterrupt:
+                sd.stop()
+                click.echo("\n⏹️  Recording stopped by user")
+
+            click.echo("✓ Recording completed")
+
+            # Save to temporary file
+            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_file:
+                temp_path = Path(temp_file.name)
+
+                # Write WAV file
+                with wave.open(str(temp_path), "wb") as wav_file:
+                    wav_file.setnchannels(channels)
+                    wav_file.setsampwidth(2)  # 16-bit
+                    wav_file.setframerate(sample_rate)
+                    wav_file.writeframes(audio_data.tobytes())
+
+            try:
+                # Initialize transcription service
+                service = TranscriptionService(config.transcription.model_dump())
+
+                if not service.is_available():
+                    click.echo("Error: Transcription service not available", err=True)
+                    engine_info = service.get_engine_info()
+                    click.echo(f"Engine info: {engine_info}", err=True)
+                    return
+
+                # Transcribe the recording
+                click.echo("🔄 Transcribing...")
+                result = await service.transcribe_file(temp_path)
+
+                if result.status.value == "completed":
+                    # Copy to clipboard
+                    if set_clipboard_text(result.text):
+                        click.echo("✅ Transcription copied to clipboard!")
+
+                        if not silent:
+                            # Show preview
+                            preview = (
+                                result.text[:200] + "..."
+                                if len(result.text) > 200
+                                else result.text
+                            )
+                            click.echo(f"\n📝 Transcribed text:\n{preview}")
+
+                        click.echo(f"⏱️  Processing time: {result.processing_time:.2f}s")
+                    else:
+                        click.echo("❌ Failed to copy to clipboard", err=True)
+                        click.echo(f"Text: {result.text}")
+                else:
+                    click.echo(f"❌ Transcription failed: {result.error}", err=True)
+
+            finally:
+                # Clean up temporary file
+                try:
+                    temp_path.unlink()
+                except Exception:
+                    pass
+
+        except ImportError as e:
+            if "sounddevice" in str(e):
+                click.echo("Error: sounddevice not installed", err=True)
+                click.echo("Install with: pip install sounddevice", err=True)
+            else:
+                click.echo(f"Import error: {e}", err=True)
+        except Exception as e:
+            click.echo(f"Error: {e}", err=True)
+
+    # Run the recording and transcription
+    try:
+        asyncio.run(run_recording_and_transcription())
+    except KeyboardInterrupt:
+        click.echo("\n⏹️  Operation cancelled by user")
+
+
 def main() -> None:
     """Main entry point for the CLI."""
     cli()
