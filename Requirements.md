@@ -1,15 +1,16 @@
+```
 Product Requirements Document: Audio Transcription Daemon
 Author: Gemini AI
-Date: 2025-07-03
-Version: 1.3
+Version: 0.1
+```
 
-1. Introduction
+## 1. Introduction
 This document outlines the product requirements for an audio transcription daemon, a background service designed to provide basic "wake word" functionality and convert spoken language from audio inputs into written text. The daemon will provide a seamless and efficient way for users and other applications to obtain text transcripts of audio files and real-time audio streams. This service is intended for a broad audience, including individual users requiring personal transcription services, developers integrating speech-to-text functionality into their applications, and businesses needing to process large volumes of audio data. The primary goal is to offer a reliable, accurate, and flexible transcription solution that can operate in various technical environments.
 
-2. Vision and Goals
+## 2. Vision and Goals
 The vision for the audio transcription daemon is to create a ubiquitous and developer-friendly tool that makes a high-quality speech-to-text conversion as simple as accessing a local utility. We aim to bridge the gap between spoken and written communication, enabling new possibilities for data analysis, accessibility, and user interaction.
 
-2.1. Goals
+### 2.1. Goals
 High Accuracy and Reliability: To provide consistently accurate transcriptions for a variety of audio sources and speaking styles by integrating with best-in-class transcription engines.
 
 Flexibility and Integration: To offer multiple modes of operation (real-time and batch) and a simple, well-documented API for easy integration with other applications and services.
@@ -20,7 +21,7 @@ User Control and Privacy: To give users clear control over their data, including
 
 Ease of Use: To provide an intuitive desktop experience for non-technical users to manage and interact with the service.
 
-3. User Stories
+## 3. User Stories
 The following user stories illustrate the key functionalities and target users of the audio transcription daemon:
 
 As a student, I want to be able to drop an audio file of a lecture into a folder and receive a text transcript of the lecture so that I can easily search for key topics and review the material.
@@ -35,8 +36,8 @@ As a user with hearing impairments, I want a system-wide service that can transc
 
 As a desktop user, I want to see the status of the transcription service at a glance and quickly start or stop it from my desktop without opening a terminal.
 
-4. Features and Requirements
-4.1. Core Functionality
+## 4. Features and Requirements
+### 4.1. Core Functionality
 Batch Transcription: The daemon must be able to transcribe pre-recorded audio files.
 
 Supported Formats: Initially, the daemon will support common audio formats, including WAV, MP3, and FLAC.
@@ -49,7 +50,7 @@ Offline Mode: This mode will be powered by a high-performance, local inference e
 
 Online Mode: This mode will leverage a public cloud-based speech recognition API (e.g., Google Speech-to-Text, Amazon Transcribe) for potentially higher accuracy and broader language support. This requires an active internet connection and user-provided API keys.
 
-4.2. API and Integration
+### 4.2. API and Integration
 REST API: The daemon will expose a local REST API for programmatic control. Endpoints will be provided for:
 
 Submitting an audio file for batch transcription.
@@ -62,14 +63,14 @@ Command-Line Interface (CLI): A CLI will be available for manual interaction, al
 
 File-Based Interface: The daemon will monitor a designated folder for new audio files and automatically transcribe them, placing the resulting text file in a specified output directory.
 
-4.3. Performance and Technical Requirements
+### 4.3. Performance and Technical Requirements
 Low Latency (Real-Time): For real-time transcription, the latency between spoken words and the corresponding text output should be minimal, aiming for under one second.
 
 Resource Management: The daemon should be configurable to limit its CPU and memory usage to prevent significant impact on system performance.
 
 Platform Support: The application will be a Linux native application, with initial support specifically for Ubuntu 24. Future releases may consider expanding to other Linux distributions and operating systems like Windows and macOS based on demand.
 
-4.4. Desktop Environment Integration
+### 4.4. Desktop Environment Integration
 System Tray Applet/Indicator: The application will include a graphical system tray applet that will be the primary point of interaction for desktop users.
 
 Status Indication: The tray icon will visually indicate the daemon's status:
@@ -96,7 +97,7 @@ View Logs: Open the latest log file for troubleshooting.
 
 Quit: Exit the tray applet and stop the daemon.
 
-5. Success Metrics
+## 5. Success Metrics
 The success of the audio transcription daemon will be measured by the following key performance indicators:
 
 Adoption Rate: The number of active installations and API users on the supported Linux platform.
