@@ -53,12 +53,12 @@ jobs:
     - name: Install system dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y portaudio19-dev build-essential devscripts debhelper dh-python python3-setuptools python3-all
+        sudo apt-get install -y portaudio19-dev build-essential devscripts debhelper dh-python python3-setuptools python3-all fakeroot
 
     - name: Install Python dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install build stdeb
+        pip install build
 
     - name: Get version from tag
       id: get_version
@@ -66,20 +66,49 @@ jobs:
 
     - name: Build DEB package
       run: |
-        # Create a source distribution first
-        python -m build --sdist
+        # Get version
+        VERSION=${GITHUB_REF#refs/tags/v}
         
-        # Extract and build DEB
-        cd dist
-        tar -xzf scribed-*.tar.gz
-        cd "scribed-${GITHUB_REF#refs/tags/v}"
+        # Create package directory structure
+        mkdir -p packages/scribed_${VERSION}-1_all/DEBIAN
+        mkdir -p packages/scribed_${VERSION}-1_all/usr/local/bin
+        mkdir -p packages/scribed_${VERSION}-1_all/usr/local/lib/python3/dist-packages
+        mkdir -p packages/scribed_${VERSION}-1_all/usr/share/doc/scribed
         
-        # Create DEB package
-        python setup.py --command-packages=stdeb.command bdist_deb
+        # Install Python package to temporary location
+        python -m pip install --target packages/scribed_${VERSION}-1_all/usr/local/lib/python3/dist-packages .
         
-        # Move built packages to a consistent location
-        mkdir -p ../../packages
-        cp deb_dist/*.deb ../../packages/
+        # Create symlink for executable
+        ln -sf /usr/local/lib/python3/dist-packages/bin/scribed packages/scribed_${VERSION}-1_all/usr/local/bin/scribed
+        
+        # Create control file
+        cat > packages/scribed_${VERSION}-1_all/DEBIAN/control << EOF
+        Package: scribed
+        Version: ${VERSION}-1
+        Section: utils
+        Priority: optional
+        Architecture: all
+        Depends: python3 (>= 3.8), python3-pip, portaudio19-dev
+        Maintainer: Scribed Team <seek.lung.data@myclkd.email>
+        Description: Audio transcription daemon with wake word detection
+         A powerful audio transcription daemon that provides wake word detection,
+         voice commands, and both real-time and batch transcription capabilities.
+         .
+         Features include support for multiple transcription engines (Whisper, OpenAI),
+         real-time and batch processing modes, cross-platform compatibility,
+         REST API for integration, and voice command execution with security controls.
+        EOF
+        
+        # Copy documentation
+        cp README.md packages/scribed_${VERSION}-1_all/usr/share/doc/scribed/
+        cp LICENSE packages/scribed_${VERSION}-1_all/usr/share/doc/scribed/
+        cp config.yaml.example packages/scribed_${VERSION}-1_all/usr/share/doc/scribed/
+        
+        # Build the DEB package
+        dpkg-deb --build packages/scribed_${VERSION}-1_all packages/scribed_${VERSION}-1_all.deb
+        
+        # Clean up temp directory but keep the .deb file
+        rm -rf packages/scribed_${VERSION}-1_all
 
     - name: Upload DEB artifacts
       uses: actions/upload-artifact@v4
