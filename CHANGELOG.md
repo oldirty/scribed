@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.0] - 2025-07-05
 
 ### Added
+
 - **Clipboard Transcription**: New feature to transcribe speech directly to system clipboard
   - CLI command `record-to-clipboard` with duration, provider, and daemon options
   - API endpoint `/record-to-clipboard` for programmatic access
@@ -28,11 +29,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Development tools and scripts
 
 ### Changed
+
 - Enhanced CLI with `--use-daemon` flag for API integration
 - Improved error handling and user feedback
 - Updated configuration system with clipboard options
 
 ### Security
+
 - Voice command execution is disabled by default
 - Secure power word implementation with safety controls
 - Clipboard functionality with platform-appropriate security measures

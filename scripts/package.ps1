@@ -74,7 +74,7 @@ function Build-WindowsExecutable {
     Write-Host "Executable: dist/scribed.exe" -ForegroundColor Green
 }
 
-function Create-SourceArchive {
+function New-SourceArchive {
     Write-Header "Creating source archive..."
     
     # Get version
@@ -130,12 +130,12 @@ switch ($Action) {
     "python" { Build-PythonPackages }
     "test" { Test-PythonPackages }
     "windows" { Build-WindowsExecutable }
-    "source" { Create-SourceArchive }
+    "source" { New-SourceArchive }
     "all" {
         Build-PythonPackages
         Test-PythonPackages
         Build-WindowsExecutable
-        Create-SourceArchive
+        New-SourceArchive
     }
 }
 

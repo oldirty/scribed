@@ -43,6 +43,7 @@ When the daemon is running, you can use the REST API to trigger clipboard transc
 **POST** `/record-to-clipboard`
 
 Request body:
+
 ```json
 {
   "duration": 10,
@@ -51,6 +52,7 @@ Request body:
 ```
 
 Response:
+
 ```json
 {
   "success": true,
@@ -74,6 +76,7 @@ When enabled, all final transcriptions from real-time mode will be automatically
 ## Use Cases
 
 ### 1. Quick Voice Notes
+
 ```bash
 # Record a quick voice note and have it ready to paste
 scribed record-to-clipboard --duration 30
@@ -81,6 +84,7 @@ scribed record-to-clipboard --duration 30
 ```
 
 ### 2. Voice-to-Text Input
+
 ```bash
 # Replace typing with voice input
 scribed record-to-clipboard --silent
@@ -88,22 +92,27 @@ scribed record-to-clipboard --silent
 ```
 
 ### 3. Meeting Notes
+
 Enable clipboard mode in the daemon configuration, and all wake-word triggered transcriptions will be automatically available in your clipboard.
 
 ### 4. API Integration
+
 Use the API endpoint to build custom applications that need voice-to-clipboard functionality.
 
 ## Platform Support
 
 ### Windows
+
 - Uses `win32clipboard` (if available) or `tkinter` as fallback
 - No additional dependencies required
 
 ### macOS
+
 - Uses `pbcopy`/`pbpaste` commands or `tkinter` as fallback
 - Works out of the box
 
 ### Linux
+
 - Requires `xclip` or `xsel` to be installed
 - Install with: `sudo apt-get install xclip`
 - Falls back to `tkinter` if command-line tools aren't available
@@ -124,6 +133,7 @@ The original `transcribe-to-clipboard` command is maintained for backward compat
 ## Examples
 
 ### Basic CLI Usage
+
 ```bash
 # Simple 10-second recording
 scribed record-to-clipboard
@@ -136,6 +146,7 @@ scribed record-to-clipboard -s
 ```
 
 ### API Usage with curl
+
 ```bash
 # Start recording via API
 curl -X POST http://localhost:8080/record-to-clipboard \
@@ -144,6 +155,7 @@ curl -X POST http://localhost:8080/record-to-clipboard \
 ```
 
 ### Python API Usage
+
 ```python
 import requests
 
@@ -168,6 +180,7 @@ python test_clipboard_feature.py
 ```
 
 This script tests:
+
 - Clipboard availability and basic functionality
 - Configuration loading
 - API endpoint functionality (requires daemon to be running)
@@ -175,6 +188,7 @@ This script tests:
 ## Troubleshooting
 
 ### Clipboard not working on Linux
+
 ```bash
 # Install required clipboard tools
 sudo apt-get install xclip
@@ -183,6 +197,7 @@ sudo apt-get install xsel
 ```
 
 ### API endpoint not responding
+
 ```bash
 # Check if daemon is running
 scribed status
@@ -192,6 +207,7 @@ scribed start
 ```
 
 ### Audio recording issues
+
 ```bash
 # Install sounddevice if missing
 pip install sounddevice
