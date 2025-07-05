@@ -72,7 +72,7 @@ jobs:
         # Extract and build DEB
         cd dist
         tar -xzf scribed-*.tar.gz
-        cd scribed-*
+        cd "scribed-${GITHUB_REF#refs/tags/v}"
         
         # Create DEB package
         python setup.py --command-packages=stdeb.command bdist_deb
@@ -99,7 +99,7 @@ jobs:
     - name: Install dependencies
       run: |
         dnf update -y
-        dnf install -y python3 python3-pip python3-devel rpm-build rpmdevtools portaudio-devel gcc gcc-c++ make
+        dnf install -y python3 python3-pip python3-devel rpm-build rpmdevtools portaudio-devel gcc gcc-c++ make python3-setuptools
     
     - name: Set up Python environment
       run: |
@@ -118,7 +118,7 @@ jobs:
         Version:        ${{ steps.get_version.outputs.VERSION }}
         Release:        1%{?dist}
         Summary:        Audio transcription daemon with wake word detection
-        License:        MIT
+        License:        GPLv3
         URL:            https://github.com/oldirty/scribed
         Source0:        %{name}-%{version}.tar.gz
         BuildArch:      noarch
