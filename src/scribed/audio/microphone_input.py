@@ -91,7 +91,7 @@ class MicrophoneInput:
         """Log available audio input devices."""
         try:
             assert self.audio is not None, "Audio must be initialized first"
-            
+
             device_count = self.audio.get_device_count()  # type: ignore
             self.logger.info(f"Found {device_count} audio devices:")
 
@@ -168,7 +168,7 @@ class MicrophoneInput:
         """Main recording loop running in separate thread."""
         try:
             assert self.stream is not None, "Audio stream must be initialized"
-            
+
             while self._is_recording:
                 # Read audio chunk
                 data = self.stream.read(self.chunk_size, exception_on_overflow=False)  # type: ignore

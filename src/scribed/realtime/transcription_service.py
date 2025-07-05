@@ -69,8 +69,14 @@ class RealTimeTranscriptionService:
 
         # Callbacks
         self._on_wake_word_callback: Optional[Callable[[int, str], None]] = None
-        self._on_transcription_callback: Optional[Callable[[Any, bool], Coroutine[Any, Any, None]]] = None
-        self._on_state_change_callback: Optional[Callable[[TranscriptionState, TranscriptionState], Coroutine[Any, Any, None]]] = None
+        self._on_transcription_callback: Optional[
+            Callable[[Any, bool], Coroutine[Any, Any, None]]
+        ] = None
+        self._on_state_change_callback: Optional[
+            Callable[
+                [TranscriptionState, TranscriptionState], Coroutine[Any, Any, None]
+            ]
+        ] = None
 
         self.logger.info("Real-time transcription service initialized")
 

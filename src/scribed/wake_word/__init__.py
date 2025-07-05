@@ -114,7 +114,7 @@ class WakeWordEngine:
         """Initialize PyAudio for microphone input."""
         try:
             assert self.porcupine is not None, "Porcupine must be initialized first"
-            
+
             self.audio = pyaudio.PyAudio()  # type: ignore
 
             # Open audio stream
@@ -206,7 +206,7 @@ class WakeWordEngine:
         try:
             assert self.audio_stream is not None, "Audio stream must be initialized"
             assert self.porcupine is not None, "Porcupine must be initialized"
-            
+
             while self._is_listening:
                 # Read audio frame
                 pcm = self.audio_stream.read(  # type: ignore
