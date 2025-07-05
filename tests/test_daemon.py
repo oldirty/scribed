@@ -6,6 +6,7 @@ from unittest.mock import Mock, AsyncMock, patch
 
 from scribed.daemon import ScribedDaemon, DaemonStatus
 from scribed.config import Config
+from .mocks import MockAsyncWakeWordEngine, MockAsyncMicrophoneInput
 
 
 class TestScribedDaemon:
@@ -87,34 +88,37 @@ class TestScribedDaemon:
         daemon = ScribedDaemon(config)
 
         with patch("scribed.daemon.APIServer") as mock_api, patch(
-            "scribed.realtime.transcription_service.AsyncMicrophoneInput"
-        ) as mock_mic, patch(
-            "scribed.wake_word.AsyncWakeWordEngine"
-        ) as mock_async_wake, patch(
-            "scribed.wake_word.WakeWordEngine"
-        ) as mock_wake:
+            "scribed.realtime.transcription_service.AsyncWakeWordEngine", MockAsyncWakeWordEngine
+        ), patch(
+            "scribed.realtime.transcription_service.AsyncMicrophoneInput", MockAsyncMicrophoneInput
+        ), patch(
+            "scribed.realtime.transcription_service.TranscriptionService"
+        ) as mock_transcription:
 
             mock_api_instance = AsyncMock()
             mock_api.return_value = mock_api_instance
+            
+            # Mock transcription service
+            mock_transcription_instance = Mock()
+            mock_transcription_instance.is_available.return_value = True
+            mock_transcription.return_value = mock_transcription_instance
 
-            # Mock microphone and wake word components
-            mock_mic_instance = AsyncMock()
-            mock_mic.return_value = mock_mic_instance
+            # Create a task that will set the shutdown event after a brief delay
+            async def delayed_shutdown():
+                await asyncio.sleep(0.2)  # Allow status to be set
+                daemon._shutdown_event.set()
 
-            mock_wake_instance = AsyncMock()
-            mock_wake.return_value = mock_wake_instance
+            shutdown_task = asyncio.create_task(delayed_shutdown())
 
-            mock_async_wake_instance = AsyncMock()
-            mock_async_wake.return_value = mock_async_wake_instance
+            try:
+                await daemon.start()
+            finally:
+                shutdown_task.cancel()
 
-            # Start daemon with immediate shutdown
-            daemon._shutdown_event.set()
-
-            await daemon.start()
-
-            # Verify API was started but no file watcher
+            # Verify API was started
             mock_api.assert_called_once_with(daemon.config, daemon)
             mock_api_instance.start.assert_called_once()
+            # Status should be set to LISTENING_FOR_WAKE_WORD when in microphone mode
             assert daemon.status == DaemonStatus.LISTENING_FOR_WAKE_WORD
 
     @pytest.mark.asyncio
@@ -164,13 +168,12 @@ class TestScribedDaemon:
 
             # Verify signal handlers were registered
             assert mock_signal.call_count == 2
-            # Check that SIGINT and SIGTERM were registered
-            call_args = [call[0] for call in mock_signal.call_args_list]
+            
+            # Get the calls made to signal.signal
+            calls = mock_signal.call_args_list
+            
+            # Verify SIGINT and SIGTERM were registered
             import signal
-
-            assert (signal.SIGINT, mock_signal.call_args_list[0][0][1]) in [
-                (call[0], call[1]) for call in mock_signal.call_args_list
-            ]
-            assert (signal.SIGTERM, mock_signal.call_args_list[1][0][1]) in [
-                (call[0], call[1]) for call in mock_signal.call_args_list
-            ]
+            signals_registered = [call[0][0] for call in calls]
+            assert signal.SIGINT in signals_registered
+            assert signal.SIGTERM in signals_registered
