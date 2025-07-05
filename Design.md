@@ -157,12 +157,12 @@ output:
 ## 7. API and Monitoring 📡
 A simple REST API is exposed for control and monitoring.
 
-GET /status: Returns the daemon's current state (listening_for_wake_word, transcribing, processing_batch, idle).
+`GET /status`: Returns the daemon's current state (listening_for_wake_word, transcribing, processing_batch, idle).
 
-POST /start_transcription: Manually forces the daemon into active transcription mode.
+`POST /start_transcription`: Manually forces the daemon into active transcription mode.
 
-POST /stop_transcription: Manually stops transcription and returns to the wake word listening state.
+`POST /stop_transcription`: Manually stops transcription and returns to the wake word listening state.
 
-POST /reload_wakeword: Reloads the wake word engine with a new model from the config file.
+`POST /reload_wakeword`: Reloads the wake word engine with a new model from the config file.
 
-GET /jobs/{job_id}: (Batch mode) Returns the status of a specific file transcription job.
+`GET /jobs/{job_id}`: (Batch mode) Returns the status of a specific file transcription job.
