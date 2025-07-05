@@ -210,18 +210,7 @@ jobs:
         %{_bindir}/scribed
         
         %changelog
-        * ${CHANGELOG_DATE} GitHub Actions <noreply@github.com> - ${{ steps.get_version.outputs.VERSION }}-1
-        - Automated build from tag ${{ github.ref_name }}
-        EOF
-        %py3_install
-        
-        %files
-        %{python3_sitelib}/scribed/
-        %{python3_sitelib}/scribed-*.egg-info/
-        %{_bindir}/scribed
-        
-        %changelog
-        * $(date +'%a %b %d %Y') GitHub Actions <noreply@github.com> - ${{ steps.get_version.outputs.VERSION }}-1
+        * \${CHANGELOG_DATE} GitHub Actions <noreply@github.com> - ${{ steps.get_version.outputs.VERSION }}-1
         - Automated build from tag ${{ github.ref_name }}
         EOF
 
