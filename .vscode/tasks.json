@@ -1,0 +1,12 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Install Development Dependencies",
+			"type": "shell",
+			"command": "pip install -e \".[dev]\"",
+			"group": "build",
+			"problemMatcher": []
+		}
+	]
+}

@@ -1,0 +1,57 @@
+# Scribed Configuration Example
+# Copy this file to config.yaml and modify as needed
+
+# Source mode: 'file' for batch processing, 'microphone' for real-time
+source_mode: file
+
+# File watcher settings for batch mode
+file_watcher:
+  watch_directory: ./audio_input
+  output_directory: ./transcripts
+  supported_formats: [".wav", ".mp3", ".flac"]
+
+# Microphone settings for real-time mode
+microphone:
+  device_index: null  # null for default device
+  sample_rate: 16000
+  channels: 1
+  chunk_size: 1024
+
+# Wake word detection settings
+wake_word:
+  engine: picovoice
+  access_key: null  # Required: Get free access key from https://console.picovoice.ai/
+  keywords: ["porcupine"]  # Built-in keywords: porcupine, alexa, hey google, hey siri, jarvis, computer, americano, blueberry, bumblebee, grapefruit, grasshopper, picovoice, pineapple, terminator
+  sensitivities: [0.5]  # Detection sensitivity (0.0-1.0) for each keyword
+  model_path: null  # Path to custom wake word model
+  silence_timeout: 15
+  stop_phrase: "stop listening"
+
+# Voice command settings (SECURITY: disabled by default)
+power_words:
+  enabled: false
+  mappings:
+    # Example mappings (uncomment and modify as needed):
+    # "open browser": "firefox"
+    # "open notes": "code ~/notes"
+    # "show weather": "curl wttr.in"
+    # "list files": "ls -la"
+
+# API server settings
+api:
+  host: "127.0.0.1"
+  port: 8080
+  debug: false
+
+# Transcription engine settings
+transcription:
+  provider: whisper  # whisper, google_speech, aws_transcribe
+  language: en-US
+  model: base  # For whisper: tiny, base, small, medium, large
+  api_key: null  # Required for cloud providers
+
+# Output settings
+output:
+  format: txt  # txt, json, srt
+  log_to_file: true
+  log_file_path: ./logs/transcription.log

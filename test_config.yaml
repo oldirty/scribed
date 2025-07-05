@@ -1,0 +1,32 @@
+# Test configuration for wake word functionality
+source_mode: microphone
+
+microphone:
+  device_index: null
+  sample_rate: 16000
+  channels: 1
+  chunk_size: 1024
+
+wake_word:
+  engine: picovoice
+  access_key: null  # Add your Picovoice access key here: https://console.picovoice.ai/
+  keywords: ["porcupine"]
+  sensitivities: [0.5]
+  model_path: null
+  silence_timeout: 15
+  stop_phrase: "stop listening"
+
+transcription:
+  provider: whisper
+  language: en-US
+  model: base
+
+api:
+  host: "127.0.0.1"
+  port: 8080
+  debug: true
+
+output:
+  format: txt
+  log_to_file: true
+  log_file_path: ./logs/transcription.log
