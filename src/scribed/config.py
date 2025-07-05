@@ -43,6 +43,13 @@ class WakeWordConfig(BaseModel):
     silence_timeout: int = Field(default=15)
     stop_phrase: str = Field(default="stop listening")
 
+    def model_post_init(self, __context: Any) -> None:
+        """Set access_key from environment if not provided."""
+        if self.access_key is None:
+            env_key = os.getenv("PICOVOICE_ACCESS_KEY")
+            if env_key:
+                object.__setattr__(self, 'access_key', env_key)
+
 
 class PowerWordsConfig(BaseModel):
     """Configuration for voice commands."""

@@ -134,7 +134,23 @@ Scribed now supports hands-free voice activation using wake words! Simply say yo
 
 2. **Get a free Picovoice access key** at [console.picovoice.ai](https://console.picovoice.ai/)
 
-3. **Configure for real-time mode:**
+3. **Set your access key** (choose one method):
+
+   **Option A: Environment Variable (Recommended)**
+
+   ```bash
+   export PICOVOICE_ACCESS_KEY="your_picovoice_access_key_here"
+   ```
+
+   **Option B: Configuration File**
+
+   ```yaml
+   wake_word:
+     access_key: "your_picovoice_access_key_here"
+   ```
+
+4. **Configure for real-time mode:**
+
    ```yaml
    source_mode: microphone
 
@@ -148,12 +164,13 @@ Scribed now supports hands-free voice activation using wake words! Simply say yo
      sample_rate: 16000
    ```
 
-4. **Start the daemon:**
+5. **Start the daemon:**
+
    ```bash
    scribed daemon --config config.yaml
    ```
 
-5. **Say "Porcupine"** to activate, then speak your content!
+6. **Say "Porcupine"** to activate, then speak your content!
 
 ### Built-in Wake Words
 

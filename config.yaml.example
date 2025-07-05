@@ -21,6 +21,7 @@ microphone:
 wake_word:
   engine: picovoice
   access_key: null  # Required: Get free access key from https://console.picovoice.ai/
+                    # Can also be set via PICOVOICE_ACCESS_KEY environment variable
   keywords: ["porcupine"]  # Built-in keywords: porcupine, alexa, hey google, hey siri, jarvis, computer, americano, blueberry, bumblebee, grapefruit, grasshopper, picovoice, pineapple, terminator
   sensitivities: [0.5]  # Detection sensitivity (0.0-1.0) for each keyword
   model_path: null  # Path to custom wake word model

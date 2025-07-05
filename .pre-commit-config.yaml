@@ -27,3 +27,5 @@ repos:
       - id: mypy
         additional_dependencies: [types-PyYAML, types-requests]
         args: [--ignore-missing-imports]
+        pass_filenames: false
+        entry: bash -c 'PICOVOICE_ACCESS_KEY="${PICOVOICE_ACCESS_KEY:-dummy}" mypy src'
