@@ -7,7 +7,7 @@ name = "scribed"
 version = "0.1.0"
 description = "Audio transcription daemon with wake word detection and voice commands"
 authors = [{name = "Scribed Team", email = "team@scribed.dev"}]
-license_files = ["LICENSE"]
+license-files = ["LICENSE"]
 readme = "README.md"
 requires-python = ">=3.8"
 classifiers = [
