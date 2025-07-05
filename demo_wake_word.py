@@ -26,7 +26,7 @@ class WakeWordDemo:
         # Setup logging
         logging.basicConfig(
             level=logging.INFO,
-            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         )
         self.logger = logging.getLogger(__name__)
 
@@ -73,7 +73,7 @@ class WakeWordDemo:
             self.service = RealTimeTranscriptionService(
                 wake_word_config=self.config.wake_word.model_dump(),
                 microphone_config=self.config.microphone.model_dump(),
-                transcription_config=self.config.transcription.model_dump()
+                transcription_config=self.config.transcription.model_dump(),
             )
 
             # Set callbacks
@@ -137,7 +137,9 @@ if __name__ == "__main__":
     config_file = "test_config.yaml"
     if not Path(config_file).exists():
         print(f"❌ Config file not found: {config_file}")
-        print(f"💡 Copy config.yaml.example to {config_file} and add your Picovoice access key.")
+        print(
+            f"💡 Copy config.yaml.example to {config_file} and add your Picovoice access key."
+        )
         sys.exit(1)
 
     # Check for access key

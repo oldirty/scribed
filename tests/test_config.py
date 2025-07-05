@@ -28,7 +28,7 @@ class TestFileWatcherConfig:
         expected_output = Path("./transcripts").resolve()
         actual_watch = Path(config.watch_directory).resolve()
         actual_output = Path(config.output_directory).resolve()
-        
+
         assert actual_watch == expected_watch
         assert actual_output == expected_output
         assert config.supported_formats == [".wav", ".mp3", ".flac"]
@@ -40,19 +40,19 @@ class TestFileWatcherConfig:
             temp_path = Path(temp_dir)
             custom_input = temp_path / "input"
             custom_output = temp_path / "output"
-            
+
             config = FileWatcherConfig(
                 watch_directory=str(custom_input),
                 output_directory=str(custom_output),
                 supported_formats=[".wav", ".mp3"],
             )
-            
+
             # Normalize paths for comparison
             expected_watch = custom_input.resolve()
             expected_output = custom_output.resolve()
             actual_watch = Path(config.watch_directory).resolve()
             actual_output = Path(config.output_directory).resolve()
-            
+
             assert actual_watch == expected_watch
             assert actual_output == expected_output
             assert config.supported_formats == [".wav", ".mp3"]
@@ -112,7 +112,7 @@ class TestOutputConfig:
         config = OutputConfig()
         assert config.format == "txt"
         assert config.log_to_file is True
-        
+
         # Normalize paths for comparison
         expected_log_path = Path("./logs/transcription.log").resolve()
         actual_log_path = Path(config.log_file_path).resolve()

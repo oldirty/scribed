@@ -15,14 +15,18 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 from src.scribed.config import Config, PowerWordsConfig
-from src.scribed.power_words import PowerWordsEngine, AsyncPowerWordsEngine, PowerWordsSecurityError
+from src.scribed.power_words import (
+    PowerWordsEngine,
+    AsyncPowerWordsEngine,
+    PowerWordsSecurityError,
+)
 
 
 def setup_logging():
     """Set up logging for testing."""
     logging.basicConfig(
         level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
 
 
@@ -36,8 +40,8 @@ def test_power_words_config():
         mappings={
             "hello world": "echo 'Hello from power words!'",
             "what time": "date",
-            "show files": "ls -la"
-        }
+            "show files": "ls -la",
+        },
     )
 
     assert config.enabled is True
@@ -47,9 +51,7 @@ def test_power_words_config():
 
     # Test security validation
     try:
-        PowerWordsConfig(
-            mappings={"test": "a" * 150}  # Too long
-        )
+        PowerWordsConfig(mappings={"test": "a" * 150})  # Too long
         assert False, "Should have raised validation error"
     except ValueError:
         print("✅ Command length validation works")
@@ -67,8 +69,8 @@ def test_power_words_detection():
             "hello world": "echo 'Hello!'",
             "what time": "date",
             "show files": "ls -la",
-            "open browser": "firefox"
-        }
+            "open browser": "firefox",
+        },
     )
 
     engine = PowerWordsEngine(config)
@@ -119,8 +121,8 @@ def test_security_validation():
             "blocked command": "rm file.txt",
             "dangerous command": "sudo reboot",
             "too long command": "a" * 25,
-            "allowed command": "date"
-        }
+            "allowed command": "date",
+        },
     )
 
     engine = PowerWordsEngine(config)
@@ -173,8 +175,8 @@ async def test_async_power_words():
         allowed_commands=["echo", "pwd", "where"],  # Windows-compatible commands
         mappings={
             "hello": "echo Hello from async power words!",
-            "location": "pwd"  # Use pwd which should work cross-platform
-        }
+            "location": "pwd",  # Use pwd which should work cross-platform
+        },
     )
 
     async_engine = AsyncPowerWordsEngine(config)
@@ -197,10 +199,7 @@ def test_power_words_disabled():
     print("🚫 Testing Disabled Power Words...")
 
     config = PowerWordsConfig(
-        enabled=False,  # Disabled
-        mappings={
-            "test": "echo 'Should not execute'"
-        }
+        enabled=False, mappings={"test": "echo 'Should not execute'"}  # Disabled
     )
 
     engine = PowerWordsEngine(config)
@@ -244,6 +243,7 @@ async def main():
     except Exception as e:
         print(f"❌ Test failed: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
 

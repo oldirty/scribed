@@ -48,7 +48,7 @@ class WakeWordConfig(BaseModel):
         if self.access_key is None:
             env_key = os.getenv("PICOVOICE_ACCESS_KEY")
             if env_key:
-                object.__setattr__(self, 'access_key', env_key)
+                object.__setattr__(self, "access_key", env_key)
 
 
 class PowerWordsConfig(BaseModel):
@@ -194,7 +194,7 @@ class Config(BaseModel):
     def model_dump(self, **kwargs: Any) -> Dict[str, Any]:
         """Convert to dictionary with nested models."""
         return super().model_dump(by_alias=True, exclude_none=False, **kwargs)
-    
+
     # Backwards compatibility
     def dict(self, **kwargs: Any) -> Dict[str, Any]:
         """Legacy method for backwards compatibility. Use model_dump() instead."""

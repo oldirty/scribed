@@ -7,6 +7,7 @@ from pathlib import Path
 # Add the src directory to Python path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
+
 def list_audio_devices():
     """List available audio input devices."""
     print("🎤 Available Audio Input Devices:")
@@ -27,7 +28,7 @@ def list_audio_devices():
             return
 
         for i, device in enumerate(devices):
-            default_marker = " (DEFAULT)" if device.get('is_default', False) else ""
+            default_marker = " (DEFAULT)" if device.get("is_default", False) else ""
             print(f"{i}: {device['name']}{default_marker}")
             print(f"   Channels: {device['channels']}")
             print(f"   Sample Rate: {device['sample_rate']} Hz")
@@ -52,7 +53,7 @@ def test_microphone_input():
             "device_index": None,  # Default device
             "sample_rate": 16000,
             "channels": 1,
-            "chunk_size": 1024
+            "chunk_size": 1024,
         }
 
         mic = MicrophoneInput(config)
@@ -124,7 +125,7 @@ def test_real_time_integration():
         service = RealTimeTranscriptionService(
             wake_word_config=config.wake_word.model_dump(),
             microphone_config=config.microphone.model_dump(),
-            transcription_config=config.transcription.model_dump()
+            transcription_config=config.transcription.model_dump(),
         )
 
         print("✓ Real-time transcription service created")
@@ -145,7 +146,7 @@ def show_configuration_example():
     print("\n⚙️  Configuration for Real-time Mode:")
     print("=" * 40)
 
-    example_config = '''# config.yaml - Real-time transcription setup
+    example_config = """# config.yaml - Real-time transcription setup
 source_mode: microphone
 
 microphone:
@@ -174,7 +175,7 @@ api:
 output:
   format: txt
   log_to_file: true
-  log_file_path: ./logs/transcription.log'''
+  log_file_path: ./logs/transcription.log"""
 
     print(example_config)
 
@@ -213,7 +214,7 @@ def main():
     else:
         print("\n❌ Some components need attention.")
         print("💡 Install missing dependencies:")
-        print("   pip install \".[wake_word]\"")
+        print('   pip install ".[wake_word]"')
 
 
 if __name__ == "__main__":

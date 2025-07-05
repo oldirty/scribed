@@ -16,8 +16,13 @@ class TestScribedDaemon:
         """Create test configuration."""
         return Config(
             source_mode="file",
-            api={"host": "127.0.0.1", "port": 8081},  # Use different port for tests
-            output={"log_to_file": False},  # Disable file logging for tests
+            api={
+                "host": "127.0.0.1",
+                "port": 8081,
+            },  # Use different port for tests # type: ignore
+            output={
+                "log_to_file": False
+            },  # Disable file logging for tests # type: ignore
         )
 
     @pytest.fixture
@@ -81,9 +86,26 @@ class TestScribedDaemon:
         config = Config(source_mode="microphone")
         daemon = ScribedDaemon(config)
 
-        with patch("scribed.daemon.APIServer") as mock_api:
+        with patch("scribed.daemon.APIServer") as mock_api, patch(
+            "scribed.realtime.transcription_service.AsyncMicrophoneInput"
+        ) as mock_mic, patch(
+            "scribed.wake_word.AsyncWakeWordEngine"
+        ) as mock_async_wake, patch(
+            "scribed.wake_word.WakeWordEngine"
+        ) as mock_wake:
+
             mock_api_instance = AsyncMock()
             mock_api.return_value = mock_api_instance
+
+            # Mock microphone and wake word components
+            mock_mic_instance = AsyncMock()
+            mock_mic.return_value = mock_mic_instance
+
+            mock_wake_instance = AsyncMock()
+            mock_wake.return_value = mock_wake_instance
+
+            mock_async_wake_instance = AsyncMock()
+            mock_async_wake.return_value = mock_async_wake_instance
 
             # Start daemon with immediate shutdown
             daemon._shutdown_event.set()

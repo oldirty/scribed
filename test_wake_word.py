@@ -47,10 +47,7 @@ async def test_wake_word_engine():
     try:
         from scribed.wake_word import AsyncWakeWordEngine, WakeWordEngine
 
-        config = {
-            "engine": "picovoice",
-            "model_path": None  # Use built-in keywords
-        }
+        config = {"engine": "picovoice", "model_path": None}  # Use built-in keywords
 
         engine = AsyncWakeWordEngine(config)
         print("✓ Wake word engine created")
@@ -80,7 +77,7 @@ async def test_microphone_input():
             "device_index": None,
             "sample_rate": 16000,
             "channels": 1,
-            "chunk_size": 1024
+            "chunk_size": 1024,
         }
 
         mic = AsyncMicrophoneInput(config)
@@ -111,7 +108,7 @@ async def test_real_time_service():
         service = RealTimeTranscriptionService(
             wake_word_config=config.wake_word.dict(),
             microphone_config=config.microphone.dict(),
-            transcription_config=config.transcription.dict()
+            transcription_config=config.transcription.dict(),
         )
 
         print("✓ Real-time service created")
@@ -138,7 +135,7 @@ async def main():
         test_wake_word_dependencies,
         test_wake_word_engine,
         test_microphone_input,
-        test_real_time_service
+        test_real_time_service,
     ]
 
     results = []

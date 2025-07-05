@@ -21,8 +21,7 @@ from src.scribed.power_words import PowerWordsEngine, AsyncPowerWordsEngine
 def setup_logging():
     """Set up logging for the demo."""
     logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(levelname)s - %(message)s'
+        level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
     )
 
 
@@ -38,6 +37,7 @@ def demonstrate_power_words_detection():
     except FileNotFoundError:
         print("❌ test_config.yaml not found. Using default configuration.")
         from src.scribed.config import PowerWordsConfig
+
         power_config = PowerWordsConfig(
             enabled=True,
             require_confirmation=False,
@@ -45,8 +45,8 @@ def demonstrate_power_words_detection():
                 "hello world": "echo 'Hello from power words!'",
                 "what time": "date",
                 "show files": "ls -la",
-                "where am i": "pwd"
-            }
+                "where am i": "pwd",
+            },
         )
 
     if not power_config.enabled:
@@ -70,7 +70,7 @@ def demonstrate_power_words_detection():
     print()
 
     for phrase in test_phrases:
-        print(f"📝 Testing: \"{phrase}\"")
+        print(f'📝 Testing: "{phrase}"')
         detected = engine.detect_power_words(phrase)
 
         if detected:
@@ -112,10 +112,12 @@ async def demonstrate_power_words_execution():
     print()
 
     for transcription in test_transcriptions:
-        print(f"🎤 Transcription: \"{transcription}\"")
+        print(f'🎤 Transcription: "{transcription}"')
 
         try:
-            executed_count = await async_engine.process_transcription_async(transcription)
+            executed_count = await async_engine.process_transcription_async(
+                transcription
+            )
             if executed_count > 0:
                 print(f"   ✅ Executed {executed_count} command(s)")
             else:
@@ -147,7 +149,7 @@ def demonstrate_security_features():
             "dangerous command": "rm important_file.txt",
             "blocked command": "sudo reboot now",
             "too long": "echo " + "a" * 50,
-        }
+        },
     )
 
     engine = PowerWordsEngine(secure_config)
@@ -184,7 +186,8 @@ def print_configuration_guide():
     print("📋 Power Words Configuration Guide")
     print("=" * 50)
 
-    print("""
+    print(
+        """
 To use power words, configure them in your config.yaml:
 
 power_words:
@@ -213,7 +216,8 @@ Security Notes:
 • All commands are validated before execution
 • Dangerous keywords log warnings but don't block
 • Commands run in user's home directory with 30s timeout
-""")
+"""
+    )
 
 
 async def main():

@@ -26,16 +26,19 @@ class SimpleAudioTest:
         if self.audio_count % 10 == 0:
             # Calculate simple volume level
             import struct
+
             try:
                 # Convert bytes to 16-bit integers
-                samples = struct.unpack(f'{len(audio_data)//2}h', audio_data)
+                samples = struct.unpack(f"{len(audio_data)//2}h", audio_data)
                 # Calculate RMS (root mean square) for volume
-                rms = (sum(s*s for s in samples) / len(samples)) ** 0.5
+                rms = (sum(s * s for s in samples) / len(samples)) ** 0.5
                 volume_bars = int(rms / 1000)  # Scale for display
                 volume_display = "█" * min(volume_bars, 20)
                 print(f"🎵 Audio: [{volume_display:<20}] RMS: {rms:6.0f}")
             except:
-                print(f"🎵 Audio chunk {self.audio_count} received ({len(audio_data)} bytes)")
+                print(
+                    f"🎵 Audio chunk {self.audio_count} received ({len(audio_data)} bytes)"
+                )
 
     async def test_audio_recording(self, duration: int = 10):
         """Test audio recording for a specified duration."""
@@ -51,7 +54,7 @@ class SimpleAudioTest:
                 "device_index": None,  # Default device
                 "sample_rate": 16000,
                 "channels": 1,
-                "chunk_size": 1024
+                "chunk_size": 1024,
             }
 
             mic = MicrophoneInput(config)
