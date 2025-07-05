@@ -31,7 +31,7 @@ class EnhancedWhisperEngine(TranscriptionEngine):
         self.device = config.get("device", "auto")
         self.backend = config.get("backend", "auto")
         self._model = None
-        self._active_backend = None
+        self._active_backend: Optional[str] = None
 
         # Check available backends
         self._backends = self._check_available_backends()

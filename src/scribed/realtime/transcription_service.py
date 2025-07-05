@@ -5,7 +5,7 @@ import logging
 import tempfile
 import time
 from pathlib import Path
-from typing import Optional, Callable, Dict, Any, Awaitable, Coroutine
+from typing import Optional, Callable, Dict, Any, Awaitable, Coroutine, List
 from enum import Enum
 
 from ..transcription.service import TranscriptionService
@@ -64,13 +64,13 @@ class RealTimeTranscriptionService:
         self._stop_phrase = wake_word_config.get("stop_phrase", "stop listening")
 
         # Audio buffering
-        self._audio_buffer = []
-        self._transcription_start_time = None
+        self._audio_buffer: List[bytes] = []
+        self._transcription_start_time: Optional[float] = None
 
         # Callbacks
-        self._on_wake_word_callback = None
-        self._on_transcription_callback = None
-        self._on_state_change_callback = None
+        self._on_wake_word_callback: Optional[Callable[[int, str], None]] = None
+        self._on_transcription_callback: Optional[Callable[[Any, bool], Coroutine[Any, Any, None]]] = None
+        self._on_state_change_callback: Optional[Callable[[TranscriptionState, TranscriptionState], Coroutine[Any, Any, None]]] = None
 
         self.logger.info("Real-time transcription service initialized")
 

@@ -5,17 +5,17 @@ import logging
 import struct
 import threading
 import time
-from typing import Callable, Optional, Any
+from typing import Callable, Optional, Any, Tuple
 from pathlib import Path
 
 try:
-    import pvporcupine
-    import pyaudio
+    import pvporcupine  # type: ignore
+    import pyaudio  # type: ignore
 
     PORCUPINE_AVAILABLE = True
 except ImportError:
-    pvporcupine = None
-    pyaudio = None
+    pvporcupine = None  # type: ignore
+    pyaudio = None  # type: ignore
     PORCUPINE_AVAILABLE = False
 
 
@@ -63,11 +63,12 @@ class WakeWordEngine:
             self.sensitivities = [0.5] * len(self.keywords)
 
         # Initialize components
-        self.porcupine = None
-        self.audio = None
-        self.audio_stream = None
+        self.porcupine: Optional[Any] = None  # pvporcupine.Porcupine when available
+        self.audio: Optional[Any] = None  # pyaudio.PyAudio when available
+        self.audio_stream: Optional[Any] = None  # pyaudio stream when available
         self._is_listening = False
-        self._listen_thread = None
+        self._listen_thread: Optional[threading.Thread] = None
+        self._callback: Optional[Callable[[int, str], None]] = None
         self._callback = None
 
         self.logger.info(f"Wake word engine initialized with keywords: {self.keywords}")
@@ -91,14 +92,14 @@ class WakeWordEngine:
 
             # Initialize Porcupine
             if self.model_path and Path(self.model_path).exists():
-                self.porcupine = pvporcupine.create(
+                self.porcupine = pvporcupine.create(  # type: ignore
                     access_key=self.access_key,
                     keywords=keyword_paths,
                     sensitivities=self.sensitivities,
                     model_path=self.model_path,
                 )
             else:
-                self.porcupine = pvporcupine.create(
+                self.porcupine = pvporcupine.create(  # type: ignore
                     access_key=self.access_key,
                     keywords=keyword_paths,
                     sensitivities=self.sensitivities,
@@ -112,20 +113,22 @@ class WakeWordEngine:
     def _initialize_audio(self) -> None:
         """Initialize PyAudio for microphone input."""
         try:
-            self.audio = pyaudio.PyAudio()
+            assert self.porcupine is not None, "Porcupine must be initialized first"
+            
+            self.audio = pyaudio.PyAudio()  # type: ignore
 
             # Open audio stream
-            self.audio_stream = self.audio.open(
-                rate=self.porcupine.sample_rate,
+            self.audio_stream = self.audio.open(  # type: ignore
+                rate=self.porcupine.sample_rate,  # type: ignore
                 channels=1,
-                format=pyaudio.paInt16,
+                format=pyaudio.paInt16,  # type: ignore
                 input=True,
-                frames_per_buffer=self.porcupine.frame_length,
+                frames_per_buffer=self.porcupine.frame_length,  # type: ignore
                 input_device_index=self.input_device_index,
             )
 
             self.logger.info(
-                f"Audio stream opened - Sample rate: {self.porcupine.sample_rate}Hz"
+                f"Audio stream opened - Sample rate: {self.porcupine.sample_rate}Hz"  # type: ignore
             )
 
         except Exception as e:
@@ -201,15 +204,18 @@ class WakeWordEngine:
     def _listen_loop(self) -> None:
         """Main listening loop running in separate thread."""
         try:
+            assert self.audio_stream is not None, "Audio stream must be initialized"
+            assert self.porcupine is not None, "Porcupine must be initialized"
+            
             while self._is_listening:
                 # Read audio frame
-                pcm = self.audio_stream.read(
-                    self.porcupine.frame_length, exception_on_overflow=False
+                pcm = self.audio_stream.read(  # type: ignore
+                    self.porcupine.frame_length, exception_on_overflow=False  # type: ignore
                 )
-                pcm = struct.unpack_from("h" * self.porcupine.frame_length, pcm)
+                pcm = struct.unpack_from("h" * self.porcupine.frame_length, pcm)  # type: ignore
 
                 # Process frame for wake word detection
-                keyword_index = self.porcupine.process(pcm)
+                keyword_index = self.porcupine.process(pcm)  # type: ignore
 
                 if keyword_index >= 0:
                     # Wake word detected!
@@ -276,11 +282,11 @@ class WakeWordEngine:
         except Exception:
             return ["porcupine"]  # Fallback
 
-    def __enter__(self):
+    def __enter__(self) -> "WakeWordEngine":
         """Context manager entry."""
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         """Context manager exit - cleanup resources."""
         self.stop_listening()
 
@@ -288,11 +294,11 @@ class WakeWordEngine:
 class AsyncWakeWordEngine:
     """Async wrapper for WakeWordEngine."""
 
-    def __init__(self, config: dict):
+    def __init__(self, config: dict) -> None:
         """Initialize async wake word engine."""
         self.engine = WakeWordEngine(config)
         self.logger = logging.getLogger(__name__)
-        self._callback_queue = asyncio.Queue()
+        self._callback_queue: asyncio.Queue[Tuple[int, str]] = asyncio.Queue()
         self._running = False
 
     async def start_listening(self, callback: Callable[[int, str], Any]) -> None:

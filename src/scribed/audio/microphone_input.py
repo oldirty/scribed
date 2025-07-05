@@ -5,17 +5,17 @@ import logging
 import struct
 import threading
 import time
-from typing import Callable, Optional, AsyncGenerator
+from typing import Callable, Optional, AsyncGenerator, Any
 from collections import deque
 
 try:
-    import pyaudio
-    import numpy as np
+    import pyaudio  # type: ignore
+    import numpy as np  # type: ignore
 
     AUDIO_AVAILABLE = True
 except ImportError:
-    pyaudio = None
-    np = None
+    pyaudio = None  # type: ignore
+    np = None  # type: ignore
     AUDIO_AVAILABLE = False
 
 
@@ -53,12 +53,12 @@ class MicrophoneInput:
         self.format = getattr(pyaudio, config.get("format", "paInt16"))
 
         # Audio components
-        self.audio = None
-        self.stream = None
+        self.audio: Optional[Any] = None  # pyaudio.PyAudio when available
+        self.stream: Optional[Any] = None  # pyaudio stream when available
         self._is_recording = False
-        self._record_thread = None
-        self._callback = None
-        self._audio_buffer = deque(maxlen=100)  # Buffer for audio chunks
+        self._record_thread: Optional[threading.Thread] = None
+        self._callback: Optional[Callable[[bytes], None]] = None
+        self._audio_buffer: deque[bytes] = deque(maxlen=100)  # Buffer for audio chunks
 
         self.logger.info(
             f"Microphone input configured - Rate: {self.sample_rate}Hz, Channels: {self.channels}"
@@ -67,13 +67,13 @@ class MicrophoneInput:
     def _initialize_audio(self) -> None:
         """Initialize PyAudio."""
         try:
-            self.audio = pyaudio.PyAudio()
+            self.audio = pyaudio.PyAudio()  # type: ignore
 
             # Log available devices for debugging
             self._log_audio_devices()
 
             # Open input stream
-            self.stream = self.audio.open(
+            self.stream = self.audio.open(  # type: ignore
                 format=self.format,
                 channels=self.channels,
                 rate=self.sample_rate,
@@ -90,15 +90,18 @@ class MicrophoneInput:
     def _log_audio_devices(self) -> None:
         """Log available audio input devices."""
         try:
-            device_count = self.audio.get_device_count()
+            assert self.audio is not None, "Audio must be initialized first"
+            
+            device_count = self.audio.get_device_count()  # type: ignore
             self.logger.info(f"Found {device_count} audio devices:")
 
             for i in range(device_count):
-                info = self.audio.get_device_info_by_index(i)
-                if info["maxInputChannels"] > 0:  # Input device
+                info = self.audio.get_device_info_by_index(i)  # type: ignore
+                max_input_channels = int(info["maxInputChannels"])  # type: ignore
+                if max_input_channels > 0:  # Input device
                     self.logger.info(
                         f"  Device {i}: {info['name']} "
-                        f"(Channels: {info['maxInputChannels']}, "
+                        f"(Channels: {max_input_channels}, "
                         f"Rate: {info['defaultSampleRate']}Hz)"
                     )
 
@@ -164,9 +167,11 @@ class MicrophoneInput:
     def _record_loop(self) -> None:
         """Main recording loop running in separate thread."""
         try:
+            assert self.stream is not None, "Audio stream must be initialized"
+            
             while self._is_recording:
                 # Read audio chunk
-                data = self.stream.read(self.chunk_size, exception_on_overflow=False)
+                data = self.stream.read(self.chunk_size, exception_on_overflow=False)  # type: ignore
 
                 # Add to buffer
                 self._audio_buffer.append(data)
@@ -231,17 +236,18 @@ class MicrophoneInput:
 
         devices = []
         try:
-            audio = pyaudio.PyAudio()
-            device_count = audio.get_device_count()
+            audio = pyaudio.PyAudio()  # type: ignore
+            device_count = audio.get_device_count()  # type: ignore
 
             for i in range(device_count):
-                info = audio.get_device_info_by_index(i)
-                if info["maxInputChannels"] > 0:  # Input device
+                info = audio.get_device_info_by_index(i)  # type: ignore
+                max_input_channels = int(info["maxInputChannels"])  # type: ignore
+                if max_input_channels > 0:  # Input device
                     devices.append(
                         {
                             "index": i,
                             "name": info["name"],
-                            "channels": info["maxInputChannels"],
+                            "channels": max_input_channels,
                             "sample_rate": info["defaultSampleRate"],
                             "host_api": info["hostApi"],
                         }
@@ -270,7 +276,7 @@ class AsyncMicrophoneInput:
         """Initialize async microphone input."""
         self.microphone = MicrophoneInput(config)
         self.logger = logging.getLogger(__name__)
-        self._audio_queue = asyncio.Queue()
+        self._audio_queue: asyncio.Queue[bytes] = asyncio.Queue()
         self._running = False
 
     async def start_recording(

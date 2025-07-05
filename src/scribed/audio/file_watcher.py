@@ -3,9 +3,9 @@
 import asyncio
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Set
+from typing import TYPE_CHECKING, Set, Any
 from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler, FileCreatedEvent
+from watchdog.events import FileSystemEventHandler, FileCreatedEvent, FileSystemEvent
 
 if TYPE_CHECKING:
     from ..config import Config
@@ -22,12 +22,12 @@ class AudioFileHandler(FileSystemEventHandler):
         super().__init__()
         self.file_watcher = file_watcher
 
-    def on_created(self, event: FileCreatedEvent) -> None:
+    def on_created(self, event: FileSystemEvent) -> None:
         """Handle file creation events."""
         if event.is_directory:
             return
 
-        file_path = Path(event.src_path)
+        file_path = Path(str(event.src_path))  # Ensure str conversion
         if file_path.suffix.lower() in self.file_watcher.supported_formats:
             logger.info(f"New audio file detected: {file_path}")
             asyncio.create_task(self.file_watcher.process_file(file_path))
@@ -48,7 +48,7 @@ class FileWatcher:
         self.watch_directory.mkdir(parents=True, exist_ok=True)
         self.output_directory.mkdir(parents=True, exist_ok=True)
 
-        self.observer: Observer = Observer()
+        self.observer = Observer()  # type: ignore
         self.handler = AudioFileHandler(self)
         self._running = False
         self._processed_files: Set[Path] = set()
@@ -62,8 +62,8 @@ class FileWatcher:
         logger.info(f"Starting file watcher on {self.watch_directory}")
         logger.info(f"Supported formats: {', '.join(self.supported_formats)}")
 
-        self.observer.schedule(self.handler, str(self.watch_directory), recursive=False)
-        self.observer.start()
+        self.observer.schedule(self.handler, str(self.watch_directory), recursive=False)  # type: ignore
+        self.observer.start()  # type: ignore
         self._running = True
 
         # Process any existing files
@@ -75,8 +75,8 @@ class FileWatcher:
             return
 
         logger.info("Stopping file watcher...")
-        self.observer.stop()
-        self.observer.join()
+        self.observer.stop()  # type: ignore
+        self.observer.join()  # type: ignore
         self._running = False
 
     async def _process_existing_files(self) -> None:
