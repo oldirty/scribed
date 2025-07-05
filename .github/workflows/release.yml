@@ -132,6 +132,14 @@ jobs:
       with:
         name: python-packages
         path: dist
+        
+    - name: Debug - List downloaded artifacts
+      run: |
+        echo "Contents of downloaded artifacts:"
+        ls -la dist/
+        echo "Current directory:"
+        pwd
+        ls -la
     
     - name: Install dependencies
       run: |
@@ -193,7 +201,21 @@ jobs:
     - name: Prepare RPM source
       run: |
         VERSION=${GITHUB_REF#refs/tags/v}
-        cp dist/scribed-${VERSION}.tar.gz ~/rpmbuild/SOURCES/
+        echo "Looking for source files in dist directory:"
+        ls -la dist/
+        
+        # Find the source distribution file (might have different naming)
+        SOURCE_FILE=$(find dist/ -name "scribed-${VERSION}.tar.gz" -o -name "scribed-*.tar.gz" | head -1)
+        if [ -z "$SOURCE_FILE" ]; then
+          echo "Error: Could not find source distribution file"
+          echo "Available files in dist/:"
+          find dist/ -type f
+          exit 1
+        fi
+        
+        echo "Found source file: $SOURCE_FILE"
+        echo "Copying source file to RPM sources:"
+        cp "$SOURCE_FILE" ~/rpmbuild/SOURCES/scribed-${VERSION}.tar.gz
 
     - name: Build RPM
       run: |
