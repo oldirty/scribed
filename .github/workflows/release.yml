@@ -242,9 +242,6 @@ jobs:
               <Directory Id="ProgramFilesFolder">
                 <Directory Id="INSTALLFOLDER" Name="Scribed" />
               </Directory>
-              <Directory Id="ProgramMenuFolder">
-                <Directory Id="ApplicationProgramsFolder" Name="Scribed"/>
-              </Directory>
             </Directory>
             
             <ComponentGroup Id="ProductComponents" Directory="INSTALLFOLDER">
