@@ -88,16 +88,18 @@ class TestScribedDaemon:
         daemon = ScribedDaemon(config)
 
         with patch("scribed.daemon.APIServer") as mock_api, patch(
-            "scribed.realtime.transcription_service.AsyncWakeWordEngine", MockAsyncWakeWordEngine
+            "scribed.realtime.transcription_service.AsyncWakeWordEngine",
+            MockAsyncWakeWordEngine,
         ), patch(
-            "scribed.realtime.transcription_service.AsyncMicrophoneInput", MockAsyncMicrophoneInput
+            "scribed.realtime.transcription_service.AsyncMicrophoneInput",
+            MockAsyncMicrophoneInput,
         ), patch(
             "scribed.realtime.transcription_service.TranscriptionService"
         ) as mock_transcription:
 
             mock_api_instance = AsyncMock()
             mock_api.return_value = mock_api_instance
-            
+
             # Mock transcription service
             mock_transcription_instance = Mock()
             mock_transcription_instance.is_available.return_value = True
@@ -168,12 +170,13 @@ class TestScribedDaemon:
 
             # Verify signal handlers were registered
             assert mock_signal.call_count == 2
-            
+
             # Get the calls made to signal.signal
             calls = mock_signal.call_args_list
-            
+
             # Verify SIGINT and SIGTERM were registered
             import signal
+
             signals_registered = [call[0][0] for call in calls]
             assert signal.SIGINT in signals_registered
             assert signal.SIGTERM in signals_registered
