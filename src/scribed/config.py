@@ -4,7 +4,7 @@ import os
 import yaml
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class FileWatcherConfig(BaseModel):
@@ -14,12 +14,13 @@ class FileWatcherConfig(BaseModel):
     output_directory: str = Field(default="./transcripts")
     supported_formats: List[str] = Field(default=[".wav", ".mp3", ".flac"])
 
-    @validator("watch_directory", "output_directory")
+    @field_validator("watch_directory", "output_directory")
+    @classmethod
     def validate_directories(cls, v: str) -> str:
         """Ensure directories exist or can be created."""
         path = Path(v)
         path.mkdir(parents=True, exist_ok=True)
-        return str(path.absolute())
+        return str(path.resolve())
 
 
 class MicrophoneConfig(BaseModel):
@@ -64,7 +65,8 @@ class PowerWordsConfig(BaseModel):
         ]
     )
 
-    @validator("mappings")
+    @field_validator("mappings")
+    @classmethod
     def validate_mappings(cls, v: Dict[str, str]) -> Dict[str, str]:
         """Validate power word mappings for security."""
         validated = {}
@@ -98,7 +100,8 @@ class TranscriptionConfig(BaseModel):
     model: str = Field(default="base")
     api_key: Optional[str] = None
 
-    @validator("provider")
+    @field_validator("provider")
+    @classmethod
     def validate_provider(cls, v: str) -> str:
         """Validate transcription provider."""
         allowed_providers = ["whisper", "google_speech", "aws_transcribe"]
@@ -114,7 +117,8 @@ class OutputConfig(BaseModel):
     log_to_file: bool = Field(default=True)
     log_file_path: str = Field(default="./logs/transcription.log")
 
-    @validator("format")
+    @field_validator("format")
+    @classmethod
     def validate_format(cls, v: str) -> str:
         """Validate output format."""
         allowed_formats = ["txt", "json", "srt"]
@@ -122,12 +126,13 @@ class OutputConfig(BaseModel):
             raise ValueError(f"Format must be one of: {allowed_formats}")
         return v
 
-    @validator("log_file_path")
+    @field_validator("log_file_path")
+    @classmethod
     def validate_log_path(cls, v: str) -> str:
         """Ensure log directory exists."""
         path = Path(v)
         path.parent.mkdir(parents=True, exist_ok=True)
-        return str(path.absolute())
+        return str(path.resolve())
 
 
 class Config(BaseModel):
@@ -142,7 +147,8 @@ class Config(BaseModel):
     transcription: TranscriptionConfig = Field(default_factory=TranscriptionConfig)
     output: OutputConfig = Field(default_factory=OutputConfig)
 
-    @validator("source_mode")
+    @field_validator("source_mode")
+    @classmethod
     def validate_source_mode(cls, v: str) -> str:
         """Validate source mode."""
         allowed_modes = ["file", "microphone"]
@@ -176,8 +182,13 @@ class Config(BaseModel):
         path.parent.mkdir(parents=True, exist_ok=True)
 
         with open(path, "w", encoding="utf-8") as f:
-            yaml.dump(self.dict(), f, default_flow_style=False, sort_keys=False)
+            yaml.dump(self.model_dump(), f, default_flow_style=False, sort_keys=False)
 
-    def dict(self, **kwargs: Any) -> Dict[str, Any]:
+    def model_dump(self, **kwargs: Any) -> Dict[str, Any]:
         """Convert to dictionary with nested models."""
-        return super().dict(by_alias=True, exclude_none=False, **kwargs)
+        return super().model_dump(by_alias=True, exclude_none=False, **kwargs)
+    
+    # Backwards compatibility
+    def dict(self, **kwargs: Any) -> Dict[str, Any]:
+        """Legacy method for backwards compatibility. Use model_dump() instead."""
+        return self.model_dump(**kwargs)

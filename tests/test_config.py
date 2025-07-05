@@ -23,20 +23,39 @@ class TestFileWatcherConfig:
     def test_default_values(self):
         """Test default configuration values."""
         config = FileWatcherConfig()
-        assert config.watch_directory == str(Path("./audio_input").absolute())
-        assert config.output_directory == str(Path("./transcripts").absolute())
+        # Normalize paths for comparison
+        expected_watch = Path("./audio_input").resolve()
+        expected_output = Path("./transcripts").resolve()
+        actual_watch = Path(config.watch_directory).resolve()
+        actual_output = Path(config.output_directory).resolve()
+        
+        assert actual_watch == expected_watch
+        assert actual_output == expected_output
         assert config.supported_formats == [".wav", ".mp3", ".flac"]
 
     def test_custom_values(self):
         """Test custom configuration values."""
-        config = FileWatcherConfig(
-            watch_directory="/custom/input",
-            output_directory="/custom/output",
-            supported_formats=[".wav", ".mp3"],
-        )
-        assert config.watch_directory == str(Path("/custom/input").absolute())
-        assert config.output_directory == str(Path("/custom/output").absolute())
-        assert config.supported_formats == [".wav", ".mp3"]
+        # Use temporary directories instead of hardcoded paths
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
+            custom_input = temp_path / "input"
+            custom_output = temp_path / "output"
+            
+            config = FileWatcherConfig(
+                watch_directory=str(custom_input),
+                output_directory=str(custom_output),
+                supported_formats=[".wav", ".mp3"],
+            )
+            
+            # Normalize paths for comparison
+            expected_watch = custom_input.resolve()
+            expected_output = custom_output.resolve()
+            actual_watch = Path(config.watch_directory).resolve()
+            actual_output = Path(config.output_directory).resolve()
+            
+            assert actual_watch == expected_watch
+            assert actual_output == expected_output
+            assert config.supported_formats == [".wav", ".mp3"]
 
 
 class TestMicrophoneConfig:
@@ -93,7 +112,11 @@ class TestOutputConfig:
         config = OutputConfig()
         assert config.format == "txt"
         assert config.log_to_file is True
-        assert config.log_file_path == str(Path("./logs/transcription.log").absolute())
+        
+        # Normalize paths for comparison
+        expected_log_path = Path("./logs/transcription.log").resolve()
+        actual_log_path = Path(config.log_file_path).resolve()
+        assert actual_log_path == expected_log_path
 
     def test_invalid_format(self):
         """Test invalid format validation."""
@@ -223,7 +246,7 @@ class TestConfig:
     def test_dict_conversion(self):
         """Test converting configuration to dictionary."""
         config = Config(source_mode="microphone")
-        config_dict = config.dict()
+        config_dict = config.model_dump()
 
         assert isinstance(config_dict, dict)
         assert config_dict["source_mode"] == "microphone"

@@ -46,6 +46,9 @@ dev = [
     "types-PyYAML>=6.0.0",
     "types-requests>=2.31.0",
     "httpx>=0.24.0",
+    # Wake word dependencies for testing
+    "pvporcupine>=3.0.0",
+    "pyaudio>=0.2.11",
 ]
 gui = [
     "PyQt6>=6.5.0",

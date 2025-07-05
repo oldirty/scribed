@@ -192,7 +192,7 @@ def transcribe(
     async def run_transcription():
         try:
             # Initialize transcription service
-            service = TranscriptionService(config.transcription.dict())
+            service = TranscriptionService(config.transcription.model_dump())
 
             if not service.is_available():
                 click.echo("Error: Transcription service not available", err=True)

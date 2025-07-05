@@ -84,7 +84,7 @@ class ScribedDaemon:
         """Initialize the transcription service."""
         try:
             self.transcription_service = TranscriptionService(
-                self.config.transcription.dict()
+                self.config.transcription.model_dump()
             )
             if self.transcription_service.is_available():
                 engine_info = self.transcription_service.get_engine_info()
@@ -107,10 +107,10 @@ class ScribedDaemon:
         try:
             # Initialize real-time service
             self.realtime_service = RealTimeTranscriptionService(
-                wake_word_config=self.config.wake_word.dict(),
-                microphone_config=self.config.microphone.dict(),
-                transcription_config=self.config.transcription.dict(),
-                power_words_config=self.config.power_words.dict(),
+                wake_word_config=self.config.wake_word.model_dump(),
+                microphone_config=self.config.microphone.model_dump(),
+                transcription_config=self.config.transcription.model_dump(),
+                power_words_config=self.config.power_words.model_dump(),
             )
 
             # Set up callbacks
