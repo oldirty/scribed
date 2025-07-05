@@ -7,7 +7,7 @@ name = "scribed"
 version = "0.1.0"
 description = "Audio transcription daemon with wake word detection and voice commands"
 authors = [{name = "Scribed Team", email = "team@scribed.dev"}]
-license = {text = "MIT"}
+license = "MIT"
 readme = "README.md"
 requires-python = ">=3.8"
 classifiers = [
@@ -69,11 +69,21 @@ wake_word = [
 [project.scripts]
 scribed = "scribed.cli:main"
 
+[project.urls]
+Homepage = "https://github.com/scribed/scribed"
+Documentation = "https://github.com/scribed/scribed/blob/main/README.md"
+Repository = "https://github.com/scribed/scribed"
+"Bug Tracker" = "https://github.com/scribed/scribed/issues"
+Changelog = "https://github.com/scribed/scribed/releases"
+
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-dir]
 "" = "src"
+
+[tool.setuptools.package-data]
+scribed = ["py.typed"]
 
 [tool.black]
 line-length = 88

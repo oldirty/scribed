@@ -59,6 +59,27 @@ docs:  ## Generate documentation (placeholder)
 build:  ## Build the package
 	python -m build
 
+build-check:  ## Check built packages
+	twine check dist/*
+
+package-python:  ## Build Python packages
+	python scripts/package.py python
+
+package-test:  ## Test Python packages
+	python scripts/package.py test
+
+package-source:  ## Create source archive
+	python scripts/package.py source
+
+package-all:  ## Build all packages
+	python scripts/package.py all
+
+release-check:  ## Check if ready for release
+	$(MAKE) ci
+	$(MAKE) build
+	$(MAKE) build-check
+	@echo "✅ Ready for release!"
+
 dev-setup:  ## Complete development setup
 	$(MAKE) install-dev
 	$(MAKE) format

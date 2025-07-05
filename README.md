@@ -40,7 +40,42 @@ A powerful audio transcription daemon that provides wake word detection, voice c
 
 ## Quick Start
 
-### Installation
+### Installation Options
+
+Scribed offers multiple installation methods for different platforms:
+
+#### 📦 Package Installers (Recommended)
+
+**Windows:**
+- **MSI Installer**: Download from [GitHub Releases](https://github.com/scribed/scribed/releases) - Professional installer with Start Menu integration
+- **Portable ZIP**: Extract and run anywhere - No installation required
+
+**Linux (Ubuntu/Debian):**
+```bash
+# Download the .deb package from GitHub Releases, then:
+sudo dpkg -i scribed_*.deb
+sudo apt-get install -f  # Fix any missing dependencies
+```
+
+**Linux (RedHat/CentOS/Fedora):**
+```bash
+# Download the .rpm package from GitHub Releases, then:
+sudo rpm -ivh scribed-*.rpm
+# or with automatic dependency resolution:
+sudo dnf install scribed-*.rpm
+```
+
+#### 🐍 Python Package (All Platforms)
+
+```bash
+# From PyPI (recommended for Python users)
+pip install scribed
+
+# With optional features
+pip install scribed[wake_word,whisper,openai]
+```
+
+#### 🔧 Development Installation
 
 ```bash
 # Clone the repository
@@ -301,6 +336,37 @@ pytest-watch
 7. Commit your changes (`git commit -m 'Add amazing feature'`)
 8. Push to the branch (`git push origin feature/amazing-feature`)
 9. Open a Pull Request
+
+## Releases and Packages
+
+Scribed provides multiple package formats for easy installation across different platforms:
+
+### 📋 Available Package Types
+
+- **Python Packages**: Wheel and source distributions on PyPI
+- **Linux DEB**: Ubuntu, Debian, and compatible distributions
+- **Linux RPM**: RedHat, CentOS, Fedora, and compatible distributions
+- **Windows MSI**: Professional installer for Windows systems
+- **Windows ZIP**: Portable executable package
+- **Source Archive**: For building from source
+
+### 🚀 Release Process
+
+Releases are automatically created when version tags are pushed:
+
+```bash
+# Create and push a release tag
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+This triggers automated builds for all supported platforms via GitHub Actions.
+
+### 📥 Download Packages
+
+All packages are available from [GitHub Releases](https://github.com/scribed/scribed/releases).
+
+For detailed information about releases and packaging, see [RELEASE_STRATEGY.md](RELEASE_STRATEGY.md).
 
 ## Security
 

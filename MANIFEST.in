@@ -1,0 +1,37 @@
+# Include important files in source distribution
+include README.md
+include LICENSE
+include config.yaml.example
+include pyproject.toml
+include setup.py
+include mypy.ini
+
+# Include documentation
+include *.md
+
+# Include configuration and example files
+include *.yaml
+include *.toml
+
+# Include tests (for source distributions)
+recursive-include tests *.py
+
+# Include CI/CD files for reference
+recursive-include .github *.yml
+recursive-include .github *.yaml
+
+# Include build scripts
+include make.bat
+include Makefile
+
+# Exclude build artifacts and cache
+global-exclude *.pyc
+global-exclude *.pyo
+global-exclude *.pyd
+global-exclude __pycache__
+global-exclude .git*
+global-exclude .coverage
+global-exclude .pytest_cache
+global-exclude *.egg-info
+global-exclude build
+global-exclude dist

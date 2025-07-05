@@ -1,0 +1,385 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'  # Triggers on version tags like v1.0.0
+
+jobs:
+  # Build source distribution and wheel
+  build-python:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+    
+    - name: Install build dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install build twine
+    
+    - name: Build source distribution and wheel
+      run: python -m build
+    
+    - name: Upload Python artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: python-packages
+        path: dist/*
+
+  # Build Linux packages (RPM and DEB)
+  build-linux:
+    runs-on: ubuntu-latest
+    needs: build-python
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-20.04
+            package_type: deb
+          - os: ubuntu-22.04
+            package_type: deb
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+    
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y portaudio19-dev build-essential devscripts debhelper dh-python python3-setuptools
+
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install build stdeb
+
+    - name: Get version from tag
+      id: get_version
+      run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+    - name: Build DEB package
+      run: |
+        # Create a source distribution first
+        python -m build --sdist
+        
+        # Extract and build DEB
+        cd dist
+        tar -xzf scribed-*.tar.gz
+        cd scribed-*
+        
+        # Create DEB package
+        python setup.py --command-packages=stdeb.command bdist_deb
+        
+        # Move built packages to a consistent location
+        mkdir -p ../../packages
+        cp deb_dist/*.deb ../../packages/
+
+    - name: Upload DEB artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: linux-deb-packages
+        path: packages/*.deb
+
+  # Build RPM packages
+  build-rpm:
+    runs-on: ubuntu-latest
+    needs: build-python
+    container: 
+      image: fedora:latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install dependencies
+      run: |
+        dnf update -y
+        dnf install -y python3 python3-pip python3-devel rpm-build rpmdevtools portaudio-devel gcc gcc-c++ make
+    
+    - name: Set up Python environment
+      run: |
+        python3 -m pip install --upgrade pip
+        pip3 install build
+
+    - name: Get version from tag
+      id: get_version
+      run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+    - name: Create RPM spec file
+      run: |
+        mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+        cat > ~/rpmbuild/SPECS/scribed.spec << 'EOF'
+        Name:           scribed
+        Version:        ${{ steps.get_version.outputs.VERSION }}
+        Release:        1%{?dist}
+        Summary:        Audio transcription daemon with wake word detection
+        License:        MIT
+        URL:            https://github.com/scribed/scribed
+        Source0:        %{name}-%{version}.tar.gz
+        BuildArch:      noarch
+        
+        BuildRequires:  python3-devel
+        BuildRequires:  python3-setuptools
+        BuildRequires:  python3-pip
+        
+        Requires:       python3
+        Requires:       portaudio
+        
+        %description
+        A powerful audio transcription daemon that provides wake word detection,
+        voice commands, and both real-time and batch transcription capabilities.
+        
+        %prep
+        %autosetup
+        
+        %build
+        %py3_build
+        
+        %install
+        %py3_install
+        
+        %files
+        %{python3_sitelib}/scribed/
+        %{python3_sitelib}/scribed-*.egg-info/
+        %{_bindir}/scribed
+        
+        %changelog
+        * $(date +'%a %b %d %Y') GitHub Actions <noreply@github.com> - ${{ steps.get_version.outputs.VERSION }}-1
+        - Automated build from tag ${{ github.ref_name }}
+        EOF
+
+    - name: Build source distribution
+      run: python3 -m build --sdist
+
+    - name: Prepare RPM source
+      run: |
+        cp dist/scribed-*.tar.gz ~/rpmbuild/SOURCES/
+
+    - name: Build RPM
+      run: |
+        rpmbuild -ba ~/rpmbuild/SPECS/scribed.spec
+        
+        # Move built packages
+        mkdir -p packages
+        cp ~/rpmbuild/RPMS/noarch/*.rpm packages/
+        cp ~/rpmbuild/SRPMS/*.rpm packages/
+
+    - name: Upload RPM artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: linux-rpm-packages
+        path: packages/*.rpm
+
+  # Build Windows installer
+  build-windows:
+    runs-on: windows-latest
+    needs: build-python
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pyinstaller cx_Freeze
+
+    - name: Get version from tag
+      id: get_version
+      shell: bash
+      run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+    - name: Install project
+      run: pip install -e ".[wake_word,whisper]"
+
+    - name: Create standalone executable with PyInstaller
+      run: |
+        pyinstaller --onefile --name scribed src/scribed/cli.py --hidden-import=scribed
+
+    - name: Create Windows ZIP package
+      shell: bash
+      run: |
+        mkdir -p packages/scribed-${{ steps.get_version.outputs.VERSION }}-windows
+        cp dist/scribed.exe packages/scribed-${{ steps.get_version.outputs.VERSION }}-windows/
+        cp README.md packages/scribed-${{ steps.get_version.outputs.VERSION }}-windows/
+        cp LICENSE packages/scribed-${{ steps.get_version.outputs.VERSION }}-windows/
+        cp config.yaml.example packages/scribed-${{ steps.get_version.outputs.VERSION }}-windows/config.yaml
+        
+        cd packages
+        powershell Compress-Archive -Path "scribed-${{ steps.get_version.outputs.VERSION }}-windows" -DestinationPath "scribed-${{ steps.get_version.outputs.VERSION }}-windows.zip"
+
+    - name: Install WiX Toolset
+      run: |
+        choco install wixtoolset
+
+    - name: Create MSI installer
+      shell: bash
+      run: |
+        # Create WiX source file
+        cat > scribed.wxs << 'EOF'
+        <?xml version="1.0" encoding="UTF-8"?>
+        <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+          <Product Id="*" Name="Scribed" Language="1033" Version="${{ steps.get_version.outputs.VERSION }}.0" 
+                   Manufacturer="Scribed Team" UpgradeCode="12345678-1234-1234-1234-123456789012">
+            <Package InstallerVersion="200" Compressed="yes" InstallScope="perMachine" />
+            
+            <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+            <MediaTemplate EmbedCab="yes" />
+            
+            <Feature Id="ProductFeature" Title="Scribed" Level="1">
+              <ComponentGroupRef Id="ProductComponents" />
+            </Feature>
+            
+            <Directory Id="TARGETDIR" Name="SourceDir">
+              <Directory Id="ProgramFilesFolder">
+                <Directory Id="INSTALLFOLDER" Name="Scribed" />
+              </Directory>
+              <Directory Id="ProgramMenuFolder">
+                <Directory Id="ApplicationProgramsFolder" Name="Scribed"/>
+              </Directory>
+            </Directory>
+            
+            <ComponentGroup Id="ProductComponents" Directory="INSTALLFOLDER">
+              <Component Id="ScribedExecutable" Guid="*">
+                <File Id="ScribedEXE" Source="dist/scribed.exe" KeyPath="yes"/>
+              </Component>
+              <Component Id="ConfigFile" Guid="*">
+                <File Id="ConfigYAML" Source="config.yaml.example" Name="config.yaml" KeyPath="yes"/>
+              </Component>
+              <Component Id="ReadmeFile" Guid="*">
+                <File Id="ReadmeMD" Source="README.md" KeyPath="yes"/>
+              </Component>
+              <Component Id="LicenseFile" Guid="*">
+                <File Id="LicenseTXT" Source="LICENSE" KeyPath="yes"/>
+              </Component>
+            </ComponentGroup>
+          </Product>
+        </Wix>
+        EOF
+        
+        # Build MSI
+        candle scribed.wxs
+        light scribed.wixobj -o packages/scribed-${{ steps.get_version.outputs.VERSION }}-windows.msi
+
+    - name: Upload Windows artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: windows-packages
+        path: packages/*
+
+  # Create GitHub release
+  release:
+    needs: [build-python, build-linux, build-rpm, build-windows]
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+    
+    - name: Get version from tag
+      id: get_version
+      run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+    
+    - name: Create release directory
+      run: |
+        mkdir -p release-assets
+        
+        # Copy Python packages
+        cp python-packages/* release-assets/
+        
+        # Copy Linux packages
+        cp linux-deb-packages/* release-assets/ 2>/dev/null || true
+        cp linux-rpm-packages/* release-assets/ 2>/dev/null || true
+        
+        # Copy Windows packages
+        cp windows-packages/* release-assets/ 2>/dev/null || true
+        
+        # Create source ZIP
+        git archive --format=zip --prefix=scribed-${{ steps.get_version.outputs.VERSION }}/ HEAD > release-assets/scribed-${{ steps.get_version.outputs.VERSION }}-source.zip
+
+    - name: Generate release notes
+      run: |
+        cat > RELEASE_NOTES.md << 'EOF'
+        # Scribed v${{ steps.get_version.outputs.VERSION }}
+        
+        ## Installation Options
+        
+        ### Python Package (All Platforms)
+        ```bash
+        pip install scribed-${{ steps.get_version.outputs.VERSION }}-py3-none-any.whl
+        ```
+        
+        ### Linux (Ubuntu/Debian)
+        ```bash
+        sudo dpkg -i scribed_${{ steps.get_version.outputs.VERSION }}-1_all.deb
+        sudo apt-get install -f  # Fix any missing dependencies
+        ```
+        
+        ### Linux (RedHat/CentOS/Fedora)
+        ```bash
+        sudo rpm -ivh scribed-${{ steps.get_version.outputs.VERSION }}-1.noarch.rpm
+        ```
+        
+        ### Windows
+        - **MSI Installer**: `scribed-${{ steps.get_version.outputs.VERSION }}-windows.msi` (Recommended)
+        - **Portable ZIP**: `scribed-${{ steps.get_version.outputs.VERSION }}-windows.zip`
+        
+        ### Source Code
+        - **Source ZIP**: `scribed-${{ steps.get_version.outputs.VERSION }}-source.zip`
+        
+        ## Quick Start
+        
+        After installation, create a configuration file and start the daemon:
+        
+        ```bash
+        # Copy example configuration
+        cp /usr/share/doc/scribed/config.yaml.example config.yaml  # Linux
+        # or use the included config.yaml in Windows packages
+        
+        # Start the daemon
+        scribed start --config config.yaml
+        ```
+        
+        ## What's New
+        
+        - Audio transcription daemon with wake word detection
+        - Support for multiple transcription engines (Whisper, OpenAI)
+        - Real-time and batch processing modes
+        - Cross-platform compatibility (Linux, Windows, macOS)
+        - REST API for integration
+        - Voice command execution with security controls
+        
+        ## System Requirements
+        
+        - Python 3.8 or higher
+        - Audio input device (microphone)
+        - Internet connection (for some transcription engines)
+        EOF
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        name: Scribed v${{ steps.get_version.outputs.VERSION }}
+        body_path: RELEASE_NOTES.md
+        files: release-assets/*
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Publish to PyPI
+      env:
+        TWINE_USERNAME: __token__
+        TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+      run: |
+        pip install twine
+        twine upload python-packages/*.whl python-packages/*.tar.gz
