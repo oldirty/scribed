@@ -286,7 +286,7 @@ Scribed follows [Semantic Versioning](https://semver.org/):
 
 ### Getting Help
 
-- Check the [Issues](https://github.com/scribed/scribed/issues) page
+- Check the [Issues](https://github.com/oldirty/scribed/issues) page
 - Review build logs in GitHub Actions
 - Test locally using provided scripts
 

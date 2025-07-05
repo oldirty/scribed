@@ -1,7 +1,7 @@
 # Scribed - Audio Transcription Daemon
 
-[![CI](https://github.com/oldirty/scribed/actions/workflows/ci.yml/badge.svg)](https://github.com/scribed/scribed/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/oldirty/scribed/branch/main/graph/badge.svg)](https://codecov.io/gh/scribed/scribed)
+[![CI](https://github.com/oldirty/scribed/actions/workflows/ci.yml/badge.svg)](https://github.com/oldirty/scribed/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/oldirty/scribed/branch/main/graph/badge.svg)](https://codecov.io/gh/oldirty/scribed)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License: GPLv3](https://img.shields.io/badge/License-GPLv3-yellow.svg)](https://opensource.org/license/gpl-3-0)
 
@@ -47,7 +47,7 @@ Scribed offers multiple installation methods for different platforms:
 #### 📦 Package Installers (Recommended)
 
 **Windows:**
-- **MSI Installer**: Download from [GitHub Releases](https://github.com/scribed/scribed/releases) - Professional installer with Start Menu integration
+- **MSI Installer**: Download from [GitHub Releases](https://github.com/oldirty/scribed/releases) - Professional installer with Start Menu integration
 - **Portable ZIP**: Extract and run anywhere - No installation required
 
 **Linux (Ubuntu/Debian):**
@@ -79,7 +79,7 @@ pip install scribed[wake_word,whisper,openai]
 
 ```bash
 # Clone the repository
-git clone https://github.com/scribed/scribed.git
+git clone https://github.com/oldirty/scribed.git
 cd scribed
 
 # Install in development mode
@@ -364,7 +364,7 @@ This triggers automated builds for all supported platforms via GitHub Actions.
 
 ### 📥 Download Packages
 
-All packages are available from [GitHub Releases](https://github.com/scribed/scribed/releases).
+All packages are available from [GitHub Releases](https://github.com/oldirty/scribed/releases).
 
 For detailed information about releases and packaging, see [RELEASE_STRATEGY.md](RELEASE_STRATEGY.md).
 
