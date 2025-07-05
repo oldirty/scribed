@@ -127,6 +127,12 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
+    - name: Download Python artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: python-packages
+        path: dist
+    
     - name: Install dependencies
       run: |
         dnf update -y
@@ -183,9 +189,6 @@ jobs:
         * $(date +'%a %b %d %Y') GitHub Actions <noreply@github.com> - ${{ steps.get_version.outputs.VERSION }}-1
         - Automated build from tag ${{ github.ref_name }}
         EOF
-
-    - name: Build source distribution
-      run: python3 -m build --sdist
 
     - name: Prepare RPM source
       run: |
