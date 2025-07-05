@@ -59,7 +59,7 @@ Porcupine includes these built-in wake words:
 - `porcupine` (default)
 - `alexa`
 - `hey google`
-- `hey siri` 
+- `hey siri`
 - `jarvis`
 - `computer`
 - `americano`
@@ -171,7 +171,7 @@ pip install pyaudio
 For custom wake words, you'll need to train a model using Picovoice Console:
 
 1. Go to [Picovoice Console](https://console.picovoice.ai/)
-2. Navigate to "Porcupine" 
+2. Navigate to "Porcupine"
 3. Create a custom wake word
 4. Download the `.ppn` model file
 5. Update your config:

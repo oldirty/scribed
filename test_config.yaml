@@ -16,6 +16,24 @@ wake_word:
   silence_timeout: 15
   stop_phrase: "stop listening"
 
+# Voice command settings - enabled for testing with safe commands
+power_words:
+  enabled: true
+  require_confirmation: false  # Disable confirmation for testing
+  max_command_length: 50
+  allowed_commands:           # Whitelist only safe commands
+    - "echo"
+    - "dir"
+    - "cd"
+  blocked_commands: []        # No additional blocks since we have whitelist
+  dangerous_keywords: []      # No warnings for test commands
+  mappings:
+    "what time is it": "echo Current time"
+    "show calendar": "echo Calendar view"
+    "hello world": "echo Hello from power words!"
+    "list files": "dir"
+    "where am i": "cd"
+
 transcription:
   provider: whisper
   language: en-US

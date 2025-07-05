@@ -25,7 +25,21 @@ This demo shows the current MVP functionality of the Scribed audio transcription
 - **Supports both openai-whisper and faster-whisper backends**
 - **Automatic language code normalization (en-US → en)**
 - **Multiple audio format support (.wav, .mp3, .flac, .mp4, .ogg, etc.)**
-- **Real-time transcription capability (framework ready)**
+- **Real-time transcription with microphone input** ✅ **COMPLETED**
+
+### 8. Wake Word Detection & Real-time Audio ✨ NEWEST!
+- **Hands-free voice activation using Picovoice Porcupine**
+- **Real-time microphone input and audio streaming**
+- **Built-in wake words: porcupine, alexa, hey google, jarvis, computer, etc.**
+- **Configurable sensitivity and silence timeout**
+- **Async audio processing with live transcription**
+
+### 9. Power Words (Voice Commands) ✨ JUST ADDED!
+- **Secure voice-activated command execution**
+- **Configurable phrase-to-command mappings**
+- **Multi-layered security controls (whitelist, blacklist, validation)**
+- **Commands disabled by default for security**
+- **Safe execution with timeouts and sandboxing**
 
 ### 5. File Watcher
 - Monitors directory for new audio files
@@ -69,7 +83,36 @@ print('Whisper Available:', service.is_available())
 print('Engine Info:', service.get_engine_info())
 "
 
-# Start daemon (would run file watcher with real transcription)
+# 🆕 NEWEST: Wake word detection and real-time transcription
+# First, install wake word dependencies:
+pip install ".[wake_word]"
+
+# Test complete audio system (shows 19+ detected audio devices):
+python test_real_time_audio.py
+
+# Test live audio recording with volume visualization:
+python test_audio_recording.py
+
+# Test wake word functionality:
+python test_wake_word.py
+
+# Test power words functionality:
+python test_power_words.py
+
+# Run interactive wake word demo (requires Picovoice access key):
+python demo_wake_word.py
+
+# Run interactive power words demo:
+python demo_power_words.py
+
+# Start daemon in real-time mode with wake word detection:
+# (Configure config.yaml with source_mode: microphone and add your Picovoice access key)
+scribed daemon --config config.yaml
+
+# Start daemon with power words enabled (uses test_config.yaml):
+scribed daemon --config test_config.yaml
+
+# Start daemon (batch mode - file watcher with real transcription)
 scribed start
 
 # In another terminal, add an audio file to test:
@@ -79,14 +122,14 @@ scribed start
 
 ## Next Steps 🚧
 
-The MVP now includes **working Whisper integration**! Next development priorities:
+The MVP now includes **working Whisper integration, real-time wake word functionality, AND secure power words (voice commands)**! Next development priorities:
 
 1. ~~**Audio Processing**: Integrate actual transcription engines (Whisper, cloud APIs)~~ ✅ **COMPLETED**
 2. ~~**Wake Word Detection**: Add Picovoice Porcupine integration~~ ✅ **COMPLETED**
-3. **Real-time Audio**: Implement microphone input and streaming
-4. **GUI**: System tray integration for desktop users
-5. **Security**: Power words command execution with safety controls
-6. **Enhanced Transcription**: 
+3. ~~**Real-time Audio**: Implement microphone input and streaming~~ ✅ **COMPLETED**
+4. ~~**Security**: Power words command execution with safety controls~~ ✅ **COMPLETED**
+5. **GUI**: System tray integration for desktop users
+6. **Enhanced Transcription**:
    - Add segment timing information display
    - Improve streaming transcription support
    - Add confidence scores and quality metrics

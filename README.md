@@ -128,12 +128,12 @@ Scribed now supports hands-free voice activation using wake words! Simply say yo
 3. **Configure for real-time mode:**
    ```yaml
    source_mode: microphone
-   
+
    wake_word:
      access_key: "your_picovoice_access_key_here"
      keywords: ["porcupine"]  # Built-in wake words available
      sensitivities: [0.5]
-   
+
    microphone:
      device_index: null  # Default microphone
      sample_rate: 16000

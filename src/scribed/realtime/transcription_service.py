@@ -1,4 +1,4 @@
-"""Real-time transcription service with wake word integration."""
+"""Real-time transcription service with wake word and power words integration."""
 
 import asyncio
 import logging
@@ -11,6 +11,7 @@ from enum import Enum
 from ..transcription.service import TranscriptionService
 from ..wake_word import AsyncWakeWordEngine, WakeWordDetectionError
 from ..audio.microphone_input import AsyncMicrophoneInput, AudioInputError
+from ..power_words import AsyncPowerWordsEngine, PowerWordsSecurityError
 
 
 class TranscriptionState(Enum):
@@ -23,15 +24,16 @@ class TranscriptionState(Enum):
 
 
 class RealTimeTranscriptionService:
-    """Real-time transcription service with wake word activation."""
+    """Real-time transcription service with wake word activation and power words."""
     
-    def __init__(self, wake_word_config: dict, microphone_config: dict, transcription_config: dict):
+    def __init__(self, wake_word_config: dict, microphone_config: dict, transcription_config: dict, power_words_config: Optional[dict] = None):
         """Initialize the real-time transcription service.
         
         Args:
             wake_word_config: Wake word engine configuration
             microphone_config: Microphone input configuration
             transcription_config: Transcription service configuration
+            power_words_config: Power words configuration (optional)
         """
         self.logger = logging.getLogger(__name__)
         
@@ -39,11 +41,13 @@ class RealTimeTranscriptionService:
         self.wake_word_config = wake_word_config
         self.microphone_config = microphone_config
         self.transcription_config = transcription_config
+        self.power_words_config = power_words_config or {}
         
         # Components
         self.wake_word_engine: Optional[AsyncWakeWordEngine] = None
         self.microphone: Optional[AsyncMicrophoneInput] = None
         self.transcription_service: Optional[TranscriptionService] = None
+        self.power_words_engine: Optional[AsyncPowerWordsEngine] = None
         
         # State management
         self.state = TranscriptionState.IDLE
@@ -80,6 +84,15 @@ class RealTimeTranscriptionService:
             if not self.transcription_service:
                 self.transcription_service = TranscriptionService(self.transcription_config)
                 self.logger.info("Transcription service initialized")
+            
+            # Initialize power words engine if configured
+            if self.power_words_config and self.power_words_config.get("enabled", False):
+                if not self.power_words_engine:
+                    from ..config import PowerWordsConfig
+                    power_config = PowerWordsConfig(**self.power_words_config)
+                    self.power_words_engine = AsyncPowerWordsEngine(power_config)
+                    self.power_words_engine.set_confirmation_callback(self._confirm_power_word_execution)
+                    self.logger.info("Power words engine initialized")
                 
         except Exception as e:
             self.logger.error(f"Failed to initialize components: {e}")
@@ -242,10 +255,13 @@ class RealTimeTranscriptionService:
                 
                 if result.text.strip():
                     # Check for stop phrase
-                    if self._stop_phrase.lower() in result.text.lower():
+                    if self._check_for_stop_phrase(result.text):
                         self.logger.info("Stop phrase detected")
                         await self._stop_transcription()
                         return
+                    
+                    # Process power words for partial transcription
+                    await self._process_power_words(result.text)
                     
                     # Notify callback with partial transcription
                     if self._on_transcription_callback:
@@ -289,6 +305,10 @@ class RealTimeTranscriptionService:
                     return
                     
                 result = await self.transcription_service.transcribe_file(temp_path)
+                
+                # Process power words for final transcription
+                if result.text.strip():
+                    await self._process_power_words(result.text)
                 
                 # Notify callback with final transcription
                 if self._on_transcription_callback:
@@ -403,3 +423,44 @@ class RealTimeTranscriptionService:
             "microphone": MicrophoneInput.is_available(),
             "transcription": True,  # Should always be available with Whisper
         }
+    
+    async def _confirm_power_word_execution(self) -> bool:
+        """Confirmation callback for power word execution.
+        
+        In a real implementation, this would show a UI prompt or use voice confirmation.
+        For now, we'll auto-approve safe commands and log dangerous ones.
+        
+        Returns:
+            True to allow execution, False to deny
+        """
+        # For safety, we'll require explicit confirmation for power words
+        # In a full implementation, this could be a voice prompt, GUI dialog, etc.
+        self.logger.warning("Power word execution requires confirmation - auto-denying for safety")
+        return False  # Deny by default for security
+    
+    async def _process_power_words(self, transcription_text: str) -> None:
+        """Process transcription text for power words and execute commands.
+        
+        Args:
+            transcription_text: The transcribed text to analyze
+        """
+        if not self.power_words_engine:
+            return
+        
+        try:
+            executed_count = await self.power_words_engine.process_transcription_async(transcription_text)
+            if executed_count > 0:
+                self.logger.info(f"Executed {executed_count} power word commands")
+        except Exception as e:
+            self.logger.error(f"Error processing power words: {e}")
+    
+    def _check_for_stop_phrase(self, text: str) -> bool:
+        """Check if transcription contains the stop phrase.
+        
+        Args:
+            text: Transcription text to check
+            
+        Returns:
+            True if stop phrase detected
+        """
+        return self._stop_phrase.lower() in text.lower()

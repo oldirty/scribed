@@ -100,7 +100,8 @@ class ScribedDaemon:
             self.realtime_service = RealTimeTranscriptionService(
                 wake_word_config=self.config.wake_word.dict(),
                 microphone_config=self.config.microphone.dict(),
-                transcription_config=self.config.transcription.dict()
+                transcription_config=self.config.transcription.dict(),
+                power_words_config=self.config.power_words.dict()
             )
             
             # Set up callbacks

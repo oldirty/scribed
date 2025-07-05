@@ -30,12 +30,27 @@ wake_word:
 # Voice command settings (SECURITY: disabled by default)
 power_words:
   enabled: false
+  require_confirmation: true  # Require confirmation before executing commands
+  max_command_length: 100     # Maximum length of commands
+  allowed_commands: []        # Whitelist of allowed commands (empty = allow all)
+  blocked_commands:           # Blacklist of dangerous commands
+    - "rm"
+    - "delete" 
+    - "format"
+    - "sudo"
+    - "admin"
+  dangerous_keywords:         # Keywords that trigger warnings
+    - "reboot"
+    - "shutdown"
+    - "kill"
   mappings:
     # Example mappings (uncomment and modify as needed):
     # "open browser": "firefox"
     # "open notes": "code ~/notes"
     # "show weather": "curl wttr.in"
     # "list files": "ls -la"
+    # "what time is it": "date"
+    # "show calendar": "cal"
 
 # API server settings
 api:

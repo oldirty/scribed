@@ -48,6 +48,30 @@ class PowerWordsConfig(BaseModel):
     
     enabled: bool = Field(default=False)
     mappings: Dict[str, str] = Field(default_factory=dict)
+    require_confirmation: bool = Field(default=True)
+    allowed_commands: List[str] = Field(default_factory=list)
+    blocked_commands: List[str] = Field(default_factory=list)
+    max_command_length: int = Field(default=100)
+    dangerous_keywords: List[str] = Field(
+        default_factory=lambda: ["rm", "delete", "format", "sudo", "admin", "reboot", "shutdown"]
+    )
+    
+    @validator("mappings")
+    def validate_mappings(cls, v: Dict[str, str]) -> Dict[str, str]:
+        """Validate power word mappings for security."""
+        validated = {}
+        for phrase, command in v.items():
+            # Convert phrase to lowercase for consistency
+            phrase = phrase.lower().strip()
+            command = command.strip()
+            
+            # Basic security checks
+            if len(command) > 100:
+                raise ValueError(f"Command too long: {command[:50]}...")
+            
+            validated[phrase] = command
+        
+        return validated
 
 
 class APIConfig(BaseModel):
