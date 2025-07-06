@@ -76,7 +76,7 @@ function Test-PythonInstallation {
     }
     
     Write-Error "Python is not installed or not in PATH."
-    Write-Host "Please install Python 3.8 or later from: https://www.python.org/downloads/"
+    Write-Host "Please install Python 3.10 or later from: https://www.python.org/downloads/"
     Write-Host "Make sure to check 'Add Python to PATH' during installation."
     return $false
 }

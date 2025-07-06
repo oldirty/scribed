@@ -108,7 +108,7 @@ powershell -ExecutionPolicy Bypass -File install-windows-simple.ps1
 
 1. **CI Environment Testing**: The integration tests should now pass reliably in CI environments like GitHub Actions
 2. **Cross-Platform Validation**: Test on Linux and macOS to ensure full cross-platform compatibility
-3. **Python Version Testing**: Verify compatibility with Python 3.8, 3.9, 3.10, and 3.11+
+3. **Python Version Testing**: Verify compatibility with Python 3.10, 3.11, and 3.12+
 4. **Performance Optimization**: Consider optimizing the synthetic audio generation for faster test execution
 
 ## Conclusion

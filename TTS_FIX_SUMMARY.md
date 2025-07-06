@@ -80,7 +80,7 @@ def generate_wav(text, path):
 
 ## Benefits
 
-1. **Tests work on all Python versions** (3.8+)
+1. **Tests work on all Python versions** (3.10+)
 2. **No system dependencies required** for basic testing
 3. **CI/CD friendly** - works in minimal environments
 4. **Better error messages** when TTS isn't available

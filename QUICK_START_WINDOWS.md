@@ -4,7 +4,7 @@ Get Scribed running on Windows in just a few minutes!
 
 ## Prerequisites
 
-- **Python 3.8+** installed from [python.org](https://python.org/downloads)
+- **Python 3.10+** installed from [python.org](https://python.org/downloads)
 - **Make sure "Add Python to PATH" was checked** during Python installation
 - **Download or clone the Scribed source code**
 

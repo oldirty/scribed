@@ -83,7 +83,7 @@ dist\scribed.exe --help
 ## 🛠️ System Requirements
 
 ### Required
-- **Python 3.8 or later** (download from [python.org](https://www.python.org/downloads/))
+- **Python 3.10 or later** (download from [python.org](https://www.python.org/downloads/))
 - **pip** (usually comes with Python)
 
 ### Optional (for specific features)
