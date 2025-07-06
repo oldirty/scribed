@@ -17,7 +17,9 @@ logger = logging.getLogger(__name__)
 class AudioFileHandler(FileSystemEventHandler):
     """Handler for audio file events."""
 
-    def __init__(self, file_watcher: "FileWatcher", loop: asyncio.AbstractEventLoop) -> None:
+    def __init__(
+        self, file_watcher: "FileWatcher", loop: asyncio.AbstractEventLoop
+    ) -> None:
         """Initialize handler."""
         super().__init__()
         self.file_watcher = file_watcher
@@ -31,13 +33,17 @@ class AudioFileHandler(FileSystemEventHandler):
         file_path = Path(str(event.src_path))  # Ensure str conversion
         if file_path.suffix.lower() in self.file_watcher.supported_formats:
             logger.info(f"New audio file detected: {file_path}")
-            asyncio.run_coroutine_threadsafe(self.file_watcher.process_file(file_path), self.loop)
+            asyncio.run_coroutine_threadsafe(
+                self.file_watcher.process_file(file_path), self.loop
+            )
 
 
 class FileWatcher:
     """File system watcher for batch audio processing."""
 
-    def __init__(self, config: "Config", daemon: "ScribedDaemon", loop: asyncio.AbstractEventLoop) -> None:
+    def __init__(
+        self, config: "Config", daemon: "ScribedDaemon", loop: asyncio.AbstractEventLoop
+    ) -> None:
         """Initialize file watcher."""
         self.config = config
         self.daemon = daemon

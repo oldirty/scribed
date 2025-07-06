@@ -1,4 +1,3 @@
-
 import pytest
 import subprocess
 import tempfile
@@ -8,6 +7,7 @@ from pathlib import Path
 
 import subprocess
 
+
 def generate_wav(text, path):
     """Generates a WAV file from text using Windows PowerShell."""
     command = [
@@ -16,9 +16,12 @@ def generate_wav(text, path):
         f"Add-Type -AssemblyName System.Speech; "
         f"$synth = New-Object System.Speech.Synthesis.SpeechSynthesizer; "
         f"$synth.SetOutputToWaveFile('{path}'); "
-        f"$synth.Speak('{text}');"
+        f"$synth.Speak('{text}');",
     ]
-    subprocess.run(command, check=True, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+    subprocess.run(
+        command, check=True, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE
+    )
+
 
 @pytest.fixture(scope="module")
 def scribed_daemon():
@@ -50,7 +53,7 @@ transcription:
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
-        
+
         # Give the daemon time to start
         time.sleep(5)
 
@@ -58,6 +61,7 @@ transcription:
 
         process.terminate()
         process.wait()
+
 
 def test_file_transcription(scribed_daemon):
     """Tests that a file placed in the watch directory is transcribed."""
@@ -74,7 +78,7 @@ def test_file_transcription(scribed_daemon):
         if transcript_path.exists():
             break
         time.sleep(1)
-    
+
     assert transcript_path.exists()
 
     transcript_content = transcript_path.read_text()
