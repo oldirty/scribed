@@ -233,15 +233,33 @@ jobs:
         echo "Copying source file to RPM sources:"
         cp "$SOURCE_FILE" ~/rpmbuild/SOURCES/scribed-${VERSION}.tar.gz
         
-        # Also extract and check the directory structure
+        # Extract and check the actual directory structure
         echo "Checking extracted content structure:"
         cd /tmp
-        tar -tzf ~/rpmbuild/SOURCES/scribed-${VERSION}.tar.gz | head -10
+        tar -tzf ~/rpmbuild/SOURCES/scribed-${VERSION}.tar.gz | head -20
+        
+        # Get the top-level directory name from the tarball
+        TOP_DIR=$(tar -tzf ~/rpmbuild/SOURCES/scribed-${VERSION}.tar.gz | head -1 | cut -d'/' -f1)
+        echo "Top-level directory in tarball: $TOP_DIR"
+        
+        # Update the spec file with the correct directory name
+        if [ "$TOP_DIR" != "scribed-${VERSION}" ]; then
+          echo "Updating spec file to use correct directory name: $TOP_DIR"
+          sed -i "s/%autosetup -n scribed-${VERSION}/%autosetup -n $TOP_DIR/" ~/rpmbuild/SPECS/scribed.spec
+        fi
 
     - name: Build RPM
       run: |
+        echo "=== Debug: Final spec file content ==="
+        cat ~/rpmbuild/SPECS/scribed.spec
+        echo "=== End spec file ==="
+
+        echo "=== Debug: RPM sources directory ==="
+        ls -la ~/rpmbuild/SOURCES/
+        echo "=== End sources ==="
+
         rpmbuild -ba ~/rpmbuild/SPECS/scribed.spec
-        
+
         # Move built packages
         mkdir -p packages
         cp ~/rpmbuild/RPMS/noarch/*.rpm packages/
