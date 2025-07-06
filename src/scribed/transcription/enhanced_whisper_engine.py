@@ -71,8 +71,8 @@ class EnhancedWhisperEngine(TranscriptionEngine):
 
             backends["openai"] = whisper
             self.logger.info("OpenAI Whisper backend available")
-        except ImportError:
-            self.logger.warning("OpenAI Whisper not available")
+        except (ImportError, RuntimeError) as e:
+            self.logger.warning(f"OpenAI Whisper not available: {e}")
 
         # Check faster-whisper
         try:
@@ -80,8 +80,8 @@ class EnhancedWhisperEngine(TranscriptionEngine):
 
             backends["faster"] = WhisperModel
             self.logger.info("Faster Whisper backend available")
-        except ImportError:
-            self.logger.warning("Faster Whisper not available")
+        except (ImportError, RuntimeError) as e:
+            self.logger.warning(f"Faster Whisper not available: {e}")
 
         return backends
 
@@ -117,7 +117,7 @@ class EnhancedWhisperEngine(TranscriptionEngine):
                 self.logger.info(f"Successfully loaded {backend_name} Whisper backend")
                 return
 
-            except Exception as e:
+            except (Exception, RuntimeError) as e:
                 self.logger.warning(f"Failed to load {backend_name} backend: {e}")
                 last_error = e
                 continue
@@ -143,9 +143,12 @@ class EnhancedWhisperEngine(TranscriptionEngine):
 
     def _load_openai_whisper(self):
         """Load openai-whisper model."""
-        import whisper
-        import torch
-        import os
+        try:
+            import whisper
+            import torch
+            import os
+        except (ImportError, RuntimeError) as e:
+            raise RuntimeError(f"Failed to import OpenAI Whisper dependencies: {e}")
 
         self.logger.info(f"Loading OpenAI Whisper model: {self.model_name}")
 

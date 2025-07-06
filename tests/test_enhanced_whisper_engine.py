@@ -11,8 +11,12 @@ from src.scribed.transcription.base import TranscriptionResult, TranscriptionSta
 class TestEnhancedWhisperEngine:
     """Test cases for EnhancedWhisperEngine."""
 
-    def test_init_default_config(self):
+    @patch(
+        "src.scribed.transcription.enhanced_whisper_engine.EnhancedWhisperEngine._check_available_backends"
+    )
+    def test_init_default_config(self, mock_backends):
         """Test initialization with default configuration."""
+        mock_backends.return_value = {}
         config = {}
         engine = EnhancedWhisperEngine(config)
 
@@ -23,8 +27,12 @@ class TestEnhancedWhisperEngine:
         assert engine._model is None
         assert engine._active_backend is None
 
-    def test_init_custom_config(self):
+    @patch(
+        "src.scribed.transcription.enhanced_whisper_engine.EnhancedWhisperEngine._check_available_backends"
+    )
+    def test_init_custom_config(self, mock_backends):
         """Test initialization with custom configuration."""
+        mock_backends.return_value = {}
         config = {
             "model": "small",
             "language": "en-US",
@@ -38,8 +46,12 @@ class TestEnhancedWhisperEngine:
         assert engine.device == "cpu"
         assert engine.backend == "faster"
 
-    def test_language_code_normalization(self):
+    @patch(
+        "src.scribed.transcription.enhanced_whisper_engine.EnhancedWhisperEngine._check_available_backends"
+    )
+    def test_language_code_normalization(self, mock_backends):
         """Test language code normalization."""
+        mock_backends.return_value = {}
         test_cases = [
             ("en-US", "en"),
             ("en-GB", "en"),
@@ -146,8 +158,12 @@ class TestEnhancedWhisperEngine:
             engine = EnhancedWhisperEngine({})
             assert engine.is_available() is False
 
-    def test_get_supported_formats(self):
+    @patch(
+        "src.scribed.transcription.enhanced_whisper_engine.EnhancedWhisperEngine._check_available_backends"
+    )
+    def test_get_supported_formats(self, mock_backends):
         """Test getting supported audio formats."""
+        mock_backends.return_value = {}
         engine = EnhancedWhisperEngine({})
         formats = engine.get_supported_formats()
 
@@ -206,7 +222,10 @@ class TestEnhancedWhisperEngine:
                 result = await engine.transcribe_file(audio_file)
 
                 assert result.status == TranscriptionStatus.FAILED
-                assert "No Whisper backends available" in result.error
+                assert (
+                    result.error is not None
+                    and "No Whisper backends available" in result.error
+                )
 
     @pytest.mark.asyncio
     async def test_transcribe_file_invalid_file(self):
@@ -227,11 +246,15 @@ class TestEnhancedWhisperEngine:
                 assert result.error == "Invalid audio file"
 
     @pytest.mark.asyncio
-    async def test_transcribe_stream_not_implemented(self):
+    @patch(
+        "src.scribed.transcription.enhanced_whisper_engine.EnhancedWhisperEngine._check_available_backends"
+    )
+    async def test_transcribe_stream_not_implemented(self, mock_backends):
         """Test that streaming transcription returns not implemented."""
+        mock_backends.return_value = {}
         engine = EnhancedWhisperEngine({})
 
         result = await engine.transcribe_stream(b"fake_audio_data")
 
         assert result.status == TranscriptionStatus.FAILED
-        assert "not yet implemented" in result.error
+        assert result.error is not None and "not yet implemented" in result.error

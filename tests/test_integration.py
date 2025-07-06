@@ -176,15 +176,29 @@ transcription:
             ["scribed", "--config", str(config_path), "start"],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
+            text=True,
         )
 
         # Give the daemon time to start
         time.sleep(5)
 
+        # Check if the process is still running
+        if process.poll() is not None:
+            # Process has exited, capture output for debugging
+            stdout, stderr = process.communicate()
+            print(f"Daemon failed to start. Exit code: {process.returncode}")
+            print(f"STDOUT: {stdout}")
+            print(f"STDERR: {stderr}")
+            raise RuntimeError(f"Scribed daemon failed to start: {stderr}")
+
         yield str(watch_dir), str(output_dir)
 
         process.terminate()
-        process.wait()
+        try:
+            process.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait()
 
 
 def test_file_transcription(scribed_daemon):
@@ -201,13 +215,26 @@ def test_file_transcription(scribed_daemon):
 
     # Wait for the transcript to be created
     transcript_path = Path(output_dir) / "test.txt"
-    for _ in range(20):  # Increased timeout
+    print(f"Waiting for transcript at: {transcript_path}")
+
+    for i in range(20):  # Increased timeout
         if transcript_path.exists():
+            print(f"Transcript found after {i+1} seconds")
             break
         time.sleep(1)
+    else:
+        # If we get here, the transcript was never created
+        print(f"Transcript not found after 20 seconds")
+        print(f"Watch directory contents: {list(Path(watch_dir).iterdir())}")
+        print(f"Output directory contents: {list(Path(output_dir).iterdir())}")
+
+        # Check if the daemon is still running
+        # Note: We can't access the process object here, so we'll just proceed with the assertion
 
     # Verify that the transcription system processed the file
-    assert transcript_path.exists()
+    assert (
+        transcript_path.exists()
+    ), f"Transcript file {transcript_path} was not created. Output dir contents: {list(Path(output_dir).iterdir())}"
 
     # Read the transcription content
     transcript_content = transcript_path.read_text().strip()
