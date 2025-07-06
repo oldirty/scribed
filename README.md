@@ -47,6 +47,7 @@ Scribed offers multiple installation methods for different platforms:
 #### 📦 Package Installers (Recommended)
 
 **Windows:**
+- **Automated Installer**: Run `.\install-windows.ps1` (PowerShell) or `install-windows.bat` (Command Prompt)
 - **MSI Installer**: Download from [GitHub Releases](https://github.com/oldirty/scribed/releases) - Professional installer with Start Menu integration
 - **Portable ZIP**: Extract and run anywhere - No installation required
 
@@ -64,6 +65,47 @@ sudo rpm -ivh scribed-*.rpm
 # or with automatic dependency resolution:
 sudo dnf install scribed-*.rpm
 ```
+
+#### 🪟 Windows Quick Install
+
+For Windows users, we provide **simple and reliable** installation scripts:
+
+**PowerShell (Recommended):**
+```powershell
+# Simple and reliable installer
+.\install-windows-simple.ps1
+
+# Or automated with menu options
+.\install-windows.ps1 -InstallType VirtualEnv
+```
+
+**Command Prompt:**
+```cmd
+# Simple and reliable installer
+install-windows-simple.bat
+
+# Or automated installer with menu
+install-windows.bat
+```
+
+**One-Command Quick Install:**
+```powershell
+# PowerShell - Creates virtual environment and installs
+python -m venv venv; venv\Scripts\Activate.ps1; python -m pip install --upgrade pip; python -m pip install -e .
+```
+
+**Manual Installation:**
+```powershell
+# User installation (no admin required)
+pip install --user -e .
+
+# Virtual environment (recommended for development)
+python -m venv scribed-env
+scribed-env\Scripts\Activate.ps1
+pip install -e .
+```
+
+> **Note:** The simple installers work with the development code and don't try to install from PyPI (which isn't available yet).
 
 #### 🐍 Python Package (All Platforms)
 

@@ -13,7 +13,15 @@ import numpy as np
 try:
     import pyttsx3
 
-    PYTTSX3_AVAILABLE = True
+    # Test if pyttsx3 can actually initialize (requires system TTS engines)
+    try:
+        engine = pyttsx3.init()
+        engine.stop()  # Clean up test initialization
+        PYTTSX3_AVAILABLE = True
+    except Exception as e:
+        print(f"pyttsx3 import succeeded but initialization failed: {e}")
+        pyttsx3 = None
+        PYTTSX3_AVAILABLE = False
 except ImportError:
     pyttsx3 = None
     PYTTSX3_AVAILABLE = False
@@ -35,6 +43,7 @@ def generate_wav(text, path):
     2. gTTS + pydub conversion (online, requires MP3 conversion)
     3. Synthetic audio generation (fallback)
     """
+    global PYTTSX3_AVAILABLE
 
     # Try pyttsx3 first (offline TTS that can output WAV directly)
     if PYTTSX3_AVAILABLE and pyttsx3 is not None:
@@ -49,6 +58,7 @@ def generate_wav(text, path):
             # Save to WAV file
             engine.save_to_file(text, str(path))
             engine.runAndWait()
+            engine.stop()  # Clean up engine
 
             # Check if file was created and has content
             if os.path.exists(path) and os.path.getsize(path) > 0:
@@ -59,6 +69,8 @@ def generate_wav(text, path):
 
         except Exception as e:
             print(f"pyttsx3 generation failed: {e}")
+            # If pyttsx3 fails, mark it as unavailable for future attempts
+            PYTTSX3_AVAILABLE = False
 
     # Try gTTS as backup (online TTS)
     if GTTS_AVAILABLE and gTTS is not None:

@@ -44,13 +44,12 @@ dev = [
     "types-PyYAML>=6.0.0",
     "types-requests>=2.31.0",
     "httpx>=0.24.0",
-    # Text-to-speech for realistic test audio
+]
+# Text-to-speech for realistic test audio (optional, may require system dependencies)
+tts = [
     "gTTS>=2.3.0",
     "pydub>=0.25.0",
     "pyttsx3>=2.90",
-    # Wake word dependencies for testing
-    "pvporcupine>=3.0.0",
-    "pyaudio>=0.2.11",
 ]
 gui = [
     "PyQt6>=6.5.0",
