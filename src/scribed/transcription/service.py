@@ -8,6 +8,7 @@ from .base import TranscriptionEngine, TranscriptionResult, TranscriptionStatus
 from .whisper_engine import WhisperEngine
 from .enhanced_whisper_engine import EnhancedWhisperEngine
 from .openai_engine import OpenAIEngine
+from .mock_engine import MockTranscriptionEngine
 
 
 class TranscriptionService:
@@ -18,6 +19,7 @@ class TranscriptionService:
         "whisper": EnhancedWhisperEngine,  # Use enhanced engine by default
         "whisper_original": WhisperEngine,  # Keep original for fallback
         "openai": OpenAIEngine,
+        "mock": MockTranscriptionEngine,  # For testing
     }
 
     def __init__(self, config: dict) -> None:

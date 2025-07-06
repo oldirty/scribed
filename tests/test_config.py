@@ -99,7 +99,7 @@ class TestTranscriptionConfig:
 
     def test_valid_providers(self):
         """Test valid provider values."""
-        for provider in ["whisper", "google_speech", "aws_transcribe"]:
+        for provider in ["whisper", "google_speech", "aws_transcribe", "mock"]:
             config = TranscriptionConfig(provider=provider)
             assert config.provider == provider
 

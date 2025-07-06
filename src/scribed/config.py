@@ -111,7 +111,7 @@ class TranscriptionConfig(BaseModel):
     @classmethod
     def validate_provider(cls, v: str) -> str:
         """Validate transcription provider."""
-        allowed_providers = ["whisper", "google_speech", "aws_transcribe"]
+        allowed_providers = ["whisper", "google_speech", "aws_transcribe", "mock"]
         if v not in allowed_providers:
             raise ValueError(f"Provider must be one of: {allowed_providers}")
         return v

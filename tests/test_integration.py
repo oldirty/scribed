@@ -166,8 +166,10 @@ api:
   host: "127.0.0.1"
   port: 8082
 transcription:
-  provider: whisper
+  provider: mock
   language: en
+  mock_text: "Hello world, this is a test transcription."
+  mock_delay: 0.1
 """
         config_path = Path(temp_dir) / "config.yaml"
         config_path.write_text(config_content)
