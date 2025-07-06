@@ -5,6 +5,11 @@ on:
     tags:
       - 'v*'  # Triggers on version tags like v1.0.0
 
+permissions:
+  contents: write
+  packages: write
+  actions: read
+
 jobs:
   # Build source distribution and wheel
   build-python:
@@ -469,8 +474,18 @@ jobs:
         files: release-assets/*
         draft: false
         prerelease: false
+        fail_on_unmatched_files: true
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
+
+    - name: Debug release files
+      if: failure()
+      run: |
+        echo "=== Release assets directory ==="
+        ls -la release-assets/
+        echo "=== Current permissions ==="
+        echo "GITHUB_TOKEN available: ${{ secrets.GITHUB_TOKEN != '' }}"
+        echo "GH_TOKEN available: ${{ secrets.GH_TOKEN != '' }}"
 
     - name: Publish to PyPI
       env:
