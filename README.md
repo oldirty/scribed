@@ -378,6 +378,9 @@ This project is licensed under the GPLv3 License - see the [LICENSE](LICENSE) fi
 
 ## Acknowledgments
 
+- Built entirely with VSCode + Copilot + Claude Sonnet 4
 - Built with integration for [Whisper](https://github.com/openai/whisper) transcription
 - Wake word detection powered by [Picovoice Porcupine](https://picovoice.ai/platform/porcupine/)
 - Audio processing with [sounddevice](https://python-sounddevice.readthedocs.io/)
+
+[Buy me a beer!](https://patreon.com/oldirty?utm_medium=unknown&utm_source=join_link&utm_campaign=creatorshare_creator&utm_content=copyLink)

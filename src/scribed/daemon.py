@@ -223,7 +223,8 @@ class ScribedDaemon:
 
             # Start file watcher for batch mode
             if self.config.source_mode == "file":
-                self.file_watcher = FileWatcher(self.config, self)
+                loop = asyncio.get_running_loop()
+                self.file_watcher = FileWatcher(self.config, self, loop)
                 await self.file_watcher.start()
                 self.status = DaemonStatus.PROCESSING_BATCH
             elif self.config.source_mode == "microphone":

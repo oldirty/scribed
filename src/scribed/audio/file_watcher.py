@@ -17,10 +17,11 @@ logger = logging.getLogger(__name__)
 class AudioFileHandler(FileSystemEventHandler):
     """Handler for audio file events."""
 
-    def __init__(self, file_watcher: "FileWatcher") -> None:
+    def __init__(self, file_watcher: "FileWatcher", loop: asyncio.AbstractEventLoop) -> None:
         """Initialize handler."""
         super().__init__()
         self.file_watcher = file_watcher
+        self.loop = loop
 
     def on_created(self, event: FileSystemEvent) -> None:
         """Handle file creation events."""
@@ -30,14 +31,17 @@ class AudioFileHandler(FileSystemEventHandler):
         file_path = Path(str(event.src_path))  # Ensure str conversion
         if file_path.suffix.lower() in self.file_watcher.supported_formats:
             logger.info(f"New audio file detected: {file_path}")
-            asyncio.create_task(self.file_watcher.process_file(file_path))
+            asyncio.run_coroutine_threadsafe(self.file_watcher.process_file(file_path), self.loop)
 
 
 class FileWatcher:
     """File system watcher for batch audio processing."""
 
-    def __init__(self, config: "Config", daemon: "ScribedDaemon") -> None:
+    def __init__(self, config: "Config", daemon: "ScribedDaemon", loop: asyncio.AbstractEventLoop) -> None:
         """Initialize file watcher."""
+        self.config = config
+        self.daemon = daemon
+        self.loop = loop
         self.config = config
         self.daemon = daemon
         self.supported_formats = set(config.file_watcher.supported_formats)
@@ -49,7 +53,7 @@ class FileWatcher:
         self.output_directory.mkdir(parents=True, exist_ok=True)
 
         self.observer = Observer()  # type: ignore
-        self.handler = AudioFileHandler(self)
+        self.handler = AudioFileHandler(self, self.loop)
         self._running = False
         self._processed_files: Set[Path] = set()
 
