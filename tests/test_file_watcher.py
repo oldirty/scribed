@@ -23,9 +23,16 @@ class TestAudioFileHandler:
         return watcher
 
     @pytest.fixture
-    def handler(self, file_watcher):
+    def event_loop(self):
+        """Create event loop for tests."""
+        loop = asyncio.new_event_loop()
+        yield loop
+        loop.close()
+
+    @pytest.fixture
+    def handler(self, file_watcher, event_loop):
         """Create handler instance."""
-        return AudioFileHandler(file_watcher)
+        return AudioFileHandler(file_watcher, event_loop)
 
     def test_init(self, handler, file_watcher):
         """Test handler initialization."""
@@ -56,9 +63,9 @@ class TestAudioFileHandler:
         event.is_directory = False
         event.src_path = "/test/audio.wav"
 
-        with patch("asyncio.create_task") as mock_create_task:
+        with patch("asyncio.run_coroutine_threadsafe") as mock_run_coroutine:
             handler.on_created(event)
-            mock_create_task.assert_called_once()
+            mock_run_coroutine.assert_called_once()
 
 
 class TestFileWatcher:
@@ -82,13 +89,15 @@ class TestFileWatcher:
     @pytest.fixture
     def config(self, temp_dirs):
         """Create test configuration."""
-        return Config(
-            file_watcher={
-                "watch_directory": temp_dirs["watch"],
-                "output_directory": temp_dirs["output"],
-                "supported_formats": [".wav", ".mp3", ".flac"],
-            }
+        from scribed.config import FileWatcherConfig
+
+        file_watcher_config = FileWatcherConfig(
+            watch_directory=temp_dirs["watch"],
+            output_directory=temp_dirs["output"],
+            supported_formats=[".wav", ".mp3", ".flac"],
         )
+
+        return Config(file_watcher=file_watcher_config)
 
     @pytest.fixture
     def daemon(self):
@@ -96,9 +105,16 @@ class TestFileWatcher:
         return Mock(spec=ScribedDaemon)
 
     @pytest.fixture
-    def file_watcher(self, config, daemon):
+    def event_loop(self):
+        """Create event loop for tests."""
+        loop = asyncio.new_event_loop()
+        yield loop
+        loop.close()
+
+    @pytest.fixture
+    def file_watcher(self, config, daemon, event_loop):
         """Create file watcher instance."""
-        return FileWatcher(config, daemon)
+        return FileWatcher(config, daemon, event_loop)
 
     def test_init(self, file_watcher, config):
         """Test file watcher initialization."""
