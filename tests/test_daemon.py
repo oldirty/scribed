@@ -78,7 +78,17 @@ class TestScribedDaemon:
             # Verify components were created and started
             mock_api.assert_called_once_with(daemon.config, daemon)
             mock_api_instance.start.assert_called_once()
-            mock_watcher.assert_called_once_with(daemon.config, daemon)
+
+            # FileWatcher should be called with config, daemon, and event loop
+            assert mock_watcher.call_count == 1
+            call_args = mock_watcher.call_args[0]
+            assert len(call_args) == 3  # config, daemon, loop
+            assert call_args[0] == daemon.config
+            assert call_args[1] == daemon
+            # The third argument should be an event loop
+            assert hasattr(
+                call_args[2], "run_until_complete"
+            )  # Check it's an event loop
             mock_watcher_instance.start.assert_called_once()
 
     @pytest.mark.asyncio
