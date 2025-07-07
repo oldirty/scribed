@@ -70,8 +70,10 @@ class WhisperWakeWordEngine:
             )
 
         # Audio buffer for rolling window - stores audio chunks
-        self._audio_buffer: deque[bytes] = deque(maxlen=self.chunk_size + self.overlap_size)
-        self._current_audio: bytes = b''  # Current accumulated audio data
+        self._audio_buffer: deque[bytes] = deque(
+            maxlen=self.chunk_size + self.overlap_size
+        )
+        self._current_audio: bytes = b""  # Current accumulated audio data
         self._is_listening = False
         self._listen_task: Optional[asyncio.Task] = None
 
@@ -193,14 +195,21 @@ class WhisperWakeWordEngine:
         while self._is_listening:
             try:
                 # Check if we have enough accumulated audio data
-                if len(self._current_audio) >= self.chunk_duration * self.sample_rate * 2:  # 2 bytes per sample
+                if (
+                    len(self._current_audio)
+                    >= self.chunk_duration * self.sample_rate * 2
+                ):  # 2 bytes per sample
                     # Extract chunk for processing
                     chunk_size_bytes = int(self.chunk_duration * self.sample_rate * 2)
                     chunk_data = self._current_audio[:chunk_size_bytes]
-                    
+
                     # Keep overlap for next chunk
-                    overlap_size_bytes = int(self.overlap_duration * self.sample_rate * 2)
-                    self._current_audio = self._current_audio[chunk_size_bytes - overlap_size_bytes:]
+                    overlap_size_bytes = int(
+                        self.overlap_duration * self.sample_rate * 2
+                    )
+                    self._current_audio = self._current_audio[
+                        chunk_size_bytes - overlap_size_bytes :
+                    ]
 
                     # Process the chunk
                     await self._process_audio_chunk(chunk_data, callback)

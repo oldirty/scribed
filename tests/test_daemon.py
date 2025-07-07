@@ -14,13 +14,13 @@ def _is_picovoice_available():
     """Check if Picovoice is available and working."""
     try:
         import pvporcupine
+
         access_key = os.getenv("PICOVOICE_ACCESS_KEY")
         if not access_key:
             return False
         # Try to create a minimal Porcupine instance to test if the key works
         test_porcupine = pvporcupine.create(
-            access_key=access_key,
-            keywords=["porcupine"]
+            access_key=access_key, keywords=["porcupine"]
         )
         test_porcupine.delete()
         return True
@@ -112,8 +112,8 @@ class TestScribedDaemon:
 
     @pytest.mark.asyncio
     @pytest.mark.skipif(
-        not _is_picovoice_available(), 
-        reason="Picovoice not available or access key invalid"
+        not _is_picovoice_available(),
+        reason="Picovoice not available or access key invalid",
     )
     async def test_start_microphone_mode(self):
         """Test starting daemon in microphone mode."""
