@@ -69,8 +69,9 @@ class WhisperWakeWordEngine:
                 f"Failed to initialize transcription service: {e}"
             )
 
-        # Audio buffer for rolling window
-        self._audio_buffer = deque(maxlen=self.chunk_size + self.overlap_size)
+        # Audio buffer for rolling window - stores audio chunks
+        self._audio_buffer: deque[bytes] = deque(maxlen=self.chunk_size + self.overlap_size)
+        self._current_audio: bytes = b''  # Current accumulated audio data
         self._is_listening = False
         self._listen_task: Optional[asyncio.Task] = None
 
@@ -191,15 +192,15 @@ class WhisperWakeWordEngine:
 
         while self._is_listening:
             try:
-                # Wait for enough audio data
-                if len(self._audio_buffer) >= self.chunk_size:
-                    # Extract chunk with overlap
-                    chunk_data = bytes(list(self._audio_buffer)[: self.chunk_size])
-
-                    # Remove processed data (keeping overlap)
-                    for _ in range(self.chunk_size - self.overlap_size):
-                        if self._audio_buffer:
-                            self._audio_buffer.popleft()
+                # Check if we have enough accumulated audio data
+                if len(self._current_audio) >= self.chunk_duration * self.sample_rate * 2:  # 2 bytes per sample
+                    # Extract chunk for processing
+                    chunk_size_bytes = int(self.chunk_duration * self.sample_rate * 2)
+                    chunk_data = self._current_audio[:chunk_size_bytes]
+                    
+                    # Keep overlap for next chunk
+                    overlap_size_bytes = int(self.overlap_duration * self.sample_rate * 2)
+                    self._current_audio = self._current_audio[chunk_size_bytes - overlap_size_bytes:]
 
                     # Process the chunk
                     await self._process_audio_chunk(chunk_data, callback)
@@ -220,14 +221,8 @@ class WhisperWakeWordEngine:
         if not self._is_listening:
             return
 
-        # Convert audio data to individual samples and add to buffer
-        # Assuming 16-bit audio (2 bytes per sample)
-        if len(audio_data) % 2 == 0:
-            for i in range(0, len(audio_data), 2):
-                sample = audio_data[i : i + 2]
-                self._audio_buffer.append(sample[0])
-                if len(sample) > 1:
-                    self._audio_buffer.append(sample[1])
+        # Accumulate audio data for processing
+        self._current_audio += audio_data
 
     async def start_listening(self, callback: Callable[[int, str], Any]) -> None:
         """Start listening for wake words.

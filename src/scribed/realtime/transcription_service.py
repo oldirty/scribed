@@ -14,16 +14,6 @@ from ..wake_word import AsyncWakeWordEngine, WakeWordDetectionError
 from ..audio.microphone_input import AsyncMicrophoneInput, AudioInputError
 from ..power_words import AsyncPowerWordsEngine, PowerWordsSecurityError
 
-# Type for wake word engines (supports both Picovoice and Whisper)
-from typing import Union
-
-try:
-    from ..wake_word.whisper_engine import AsyncWhisperWakeWordEngine
-
-    WakeWordEngineUnion = Union[AsyncWakeWordEngine, AsyncWhisperWakeWordEngine]
-except ImportError:
-    WakeWordEngineUnion = AsyncWakeWordEngine
-
 
 class TranscriptionState(Enum):
     """States of the real-time transcription system."""

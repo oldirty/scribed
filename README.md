@@ -169,35 +169,65 @@ scribed start --config /path/to/config.yaml
 Create a `config.yaml` file:
 
 ```yaml
-# Source mode: 'file' for batch processing, 'microphone' for real-time
-source_mode: file
-
-# File watcher settings for batch mode
+source_mode: microphone
 file_watcher:
-  watch_directory: ./audio_input
-  output_directory: ./transcripts
-  supported_formats: [".wav", ".mp3", ".flac"]
-
-# API settings
-api:
-  host: "127.0.0.1"
-  port: 8080
-
-# Transcription settings
-transcription:
-  provider: whisper  # or google_speech, aws_transcribe
-  language: en-US
-
-# Output settings
-output:
-  format: txt  # txt, json, srt
-  log_to_file: true
-  log_file_path: ./logs/transcription.log
-
-# Security settings for voice commands (disabled by default)
+  watch_directory: \Users\me\.local\scribed\audio_input
+  output_directory: \Users\me\.local\scribed\transcripts
+  supported_formats:
+  - .wav
+  - .mp3
+  - .flac
+microphone:
+  device_index: null
+  sample_rate: 16000
+  channels: 1
+  chunk_size: 1024
+wake_word:
+  engine: picovoice
+  access_key: redacted
+  keywords:
+  - porcupine
+  sensitivities:
+  - 0.5
+  model_path: null
+  silence_timeout: 2
+  stop_phrase: stop listening
 power_words:
-  enabled: false
-  mappings: {}
+  enabled: true
+  require_confirmation: true
+  confirmation_method: log_only  # voice, log_only
+  confirmation_timeout: 10.0  # seconds
+  confirmation_retries: 2     # number of retries
+  auto_approve_safe: false    # auto-approve safe commands
+  log_only_approve: true     # in log_only mode, approve by default
+  mappings:
+    discord: 'C:\Users\me\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Discord Inc\Discord.lnk'
+    gemini: 'C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Google Chrome.lnk https://gemini.google.com'
+  allowed_commands: []
+  blocked_commands: []
+  max_command_length: 300
+  dangerous_keywords:
+  - delete
+  - format
+  - sudo
+  - admin
+  - reboot
+  - shutdown
+api:
+  host: 127.0.0.1
+  port: 8080
+  debug: false
+transcription:
+  provider: whisper
+  language: en-US
+  model: base
+  api_key: null
+output:
+  format: txt
+  log_to_file: true
+  log_file_path: \Users\me\.local\scribed\logs\transcription.log
+  enable_clipboard: true
+  clipboard_on_final: true
 ```
 
 ## Wake Word Detection (New! 🎉)

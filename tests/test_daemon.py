@@ -1,5 +1,6 @@
 """Test daemon functionality."""
 
+import os
 import pytest
 import asyncio
 from unittest.mock import Mock, AsyncMock, patch
@@ -7,6 +8,24 @@ from unittest.mock import Mock, AsyncMock, patch
 from scribed.daemon import ScribedDaemon, DaemonStatus
 from scribed.config import Config
 from .mocks import MockAsyncWakeWordEngine, MockAsyncMicrophoneInput
+
+
+def _is_picovoice_available():
+    """Check if Picovoice is available and working."""
+    try:
+        import pvporcupine
+        access_key = os.getenv("PICOVOICE_ACCESS_KEY")
+        if not access_key:
+            return False
+        # Try to create a minimal Porcupine instance to test if the key works
+        test_porcupine = pvporcupine.create(
+            access_key=access_key,
+            keywords=["porcupine"]
+        )
+        test_porcupine.delete()
+        return True
+    except Exception:
+        return False
 
 
 class TestScribedDaemon:
@@ -92,6 +111,10 @@ class TestScribedDaemon:
             mock_watcher_instance.start.assert_called_once()
 
     @pytest.mark.asyncio
+    @pytest.mark.skipif(
+        not _is_picovoice_available(), 
+        reason="Picovoice not available or access key invalid"
+    )
     async def test_start_microphone_mode(self):
         """Test starting daemon in microphone mode."""
         config = Config(source_mode="microphone")
