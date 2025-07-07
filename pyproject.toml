@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools>=45", "wheel"]
+requires = ["setuptools>=45", "wheel", "setuptools-scm[toml]>=6.2"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "scribed"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Audio transcription daemon with wake word detection and voice commands"
 authors = [{name = "Scribed Team", email = "team@scribed.dev"}]
 readme = "README.md"
@@ -125,3 +125,8 @@ exclude_lines = [
 
 [tool.coverage.xml]
 output = "coverage.xml"
+
+[tool.setuptools_scm]
+write_to = "src/scribed/_version.py"
+version_scheme = "guess-next-dev"
+local_scheme = "no-local-version"

@@ -8,10 +8,11 @@ from typing import Optional
 
 from .config import Config
 from .daemon import ScribedDaemon
+from . import __version__
 
 
 @click.group()
-@click.version_option(version="0.1.0", prog_name="scribed")
+@click.version_option(version=__version__, prog_name="scribed")
 @click.option(
     "--config",
     "-c",

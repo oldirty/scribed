@@ -8,6 +8,7 @@ import wave
 from typing import TYPE_CHECKING, Optional
 import uvicorn
 from fastapi import FastAPI, HTTPException
+from .. import __version__
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
@@ -66,7 +67,7 @@ class APIServer:
         self.app = FastAPI(
             title="Scribed API",
             description="Audio transcription daemon API",
-            version="0.1.0",
+            version=__version__,
         )
         self.server: Optional[uvicorn.Server] = None
         self._setup_routes()
