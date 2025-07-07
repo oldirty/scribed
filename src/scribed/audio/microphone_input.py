@@ -287,12 +287,23 @@ class AsyncMicrophoneInput:
         Args:
             callback: Optional callback for audio data
         """
+        if self._running:
+            self.logger.warning("Microphone already recording")
+            return
+
         self._running = True
+
+        # Get the current event loop to use in the callback
+        loop = asyncio.get_running_loop()
 
         # Start the sync microphone with our queue-based callback
         def queue_callback(audio_data: bytes):
             try:
-                asyncio.create_task(self._audio_queue.put(audio_data))
+                # Schedule putting the audio data in the queue on the event loop
+                # This is thread-safe and works from any thread
+                loop.call_soon_threadsafe(
+                    lambda: asyncio.create_task(self._audio_queue.put(audio_data))
+                )
             except Exception as e:
                 self.logger.error(f"Error queuing audio data: {e}")
 

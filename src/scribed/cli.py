@@ -383,8 +383,6 @@ def _record_to_clipboard_direct(
     click.echo(f"Recording for {duration} seconds...")
     click.echo(f"Provider: {config.transcription.provider}")
     click.echo("Press Ctrl+C to stop early")
-    click.echo(f"Provider: {config.transcription.provider}")
-    click.echo("Press Ctrl+C to stop early")
 
     async def run_recording_and_transcription():
         try:

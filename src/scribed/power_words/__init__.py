@@ -209,17 +209,61 @@ class AsyncPowerWordsEngine:
             config: Power words configuration
         """
         self.engine = PowerWordsEngine(config)
-        self.confirmation_callback: Optional[Callable[[], Awaitable[bool]]] = None
+        self.confirmation_callback: Optional[Callable[[str, str], Awaitable[bool]]] = (
+            None
+        )
 
     def set_confirmation_callback(
-        self, callback: Callable[[], Awaitable[bool]]
+        self, callback: Callable[[str, str], Awaitable[bool]]
     ) -> None:
         """Set async confirmation callback.
 
         Args:
-            callback: Async function that returns True if user confirms execution
+            callback: Async function that takes (command, command_type) and returns True if user confirms execution
         """
         self.confirmation_callback = callback
+
+    def _assess_command_type(self, command: str) -> str:
+        """Assess the type/safety level of a command.
+
+        Args:
+            command: Command to assess
+
+        Returns:
+            "safe", "dangerous", or "unknown"
+        """
+        command_lower = command.lower()
+
+        # Check for dangerous keywords from config
+        if any(
+            keyword.lower() in command_lower
+            for keyword in self.engine.dangerous_keywords
+        ):
+            return "dangerous"
+
+        # Check for safe patterns (applications, websites, simple shortcuts)
+        import re
+
+        safe_patterns = [
+            r"\.lnk$",  # Windows shortcuts
+            r"^https?://",  # URLs
+            r"explorer\.exe",  # File explorer
+            r"notepad",  # Simple applications
+            r"chrome\.exe",  # Browser
+            r"start menu",  # Start menu navigation
+        ]
+
+        for pattern in safe_patterns:
+            if re.search(pattern, command_lower):
+                return "safe"
+
+        # Check allowed commands list
+        if any(
+            allowed.lower() in command_lower for allowed in self.engine.allowed_commands
+        ):
+            return "safe"
+
+        return "unknown"
 
     async def execute_command_async(self, command: str) -> bool:
         """Execute command asynchronously.
@@ -236,7 +280,9 @@ class AsyncPowerWordsEngine:
 
             # Request confirmation if required
             if self.engine.require_confirmation and self.confirmation_callback:
-                if not await self.confirmation_callback():
+                # Assess command type for confirmation
+                command_type = self._assess_command_type(command)
+                if not await self.confirmation_callback(command, command_type):
                     logger.info(f"Command execution cancelled by user: {command}")
                     return False
 

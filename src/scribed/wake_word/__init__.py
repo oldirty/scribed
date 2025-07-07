@@ -1,4 +1,4 @@
-"""Wake word detection engine using Picovoice Porcupine."""
+"""Wake word detection engines: Picovoice Porcupine and Whisper-based."""
 
 import asyncio
 import logging
@@ -17,6 +17,16 @@ except ImportError:
     pvporcupine = None  # type: ignore
     pyaudio = None  # type: ignore
     PORCUPINE_AVAILABLE = False
+
+# Import Whisper wake word engine
+try:
+    from .whisper_engine import WhisperWakeWordEngine, AsyncWhisperWakeWordEngine
+
+    WHISPER_WAKE_WORD_AVAILABLE = True
+except ImportError as e:
+    WhisperWakeWordEngine = None  # type: ignore
+    AsyncWhisperWakeWordEngine = None  # type: ignore
+    WHISPER_WAKE_WORD_AVAILABLE = False
 
 
 class WakeWordDetectionError(Exception):
@@ -305,12 +315,18 @@ class AsyncWakeWordEngine:
         """Start async listening for wake words."""
         self._running = True
 
+        # Get the current event loop to use in the callback
+        loop = asyncio.get_running_loop()
+
         # Start the sync engine with our queue-based callback
         def queue_callback(keyword_index: int, keyword_name: str):
             try:
-                # Put the detection in the queue
-                asyncio.create_task(
-                    self._callback_queue.put((keyword_index, keyword_name))
+                # Schedule putting the detection in the queue on the event loop
+                # This is thread-safe and works from any thread
+                loop.call_soon_threadsafe(
+                    lambda: asyncio.create_task(
+                        self._callback_queue.put((keyword_index, keyword_name))
+                    )
                 )
             except Exception as e:
                 self.logger.error(f"Error queuing wake word detection: {e}")
@@ -356,3 +372,92 @@ class AsyncWakeWordEngine:
     def get_info(self) -> dict:
         """Get engine info."""
         return self.engine.get_info()
+
+
+def create_wake_word_engine(config: dict):
+    """Factory function to create appropriate wake word engine based on config.
+
+    Args:
+        config: Configuration dictionary with 'engine' key specifying the engine type
+
+    Returns:
+        Appropriate wake word engine instance
+
+    Raises:
+        WakeWordDetectionError: If the specified engine is not available
+    """
+    engine_type = config.get("engine", "picovoice").lower()
+
+    if engine_type == "picovoice":
+        if not PORCUPINE_AVAILABLE:
+            raise WakeWordDetectionError(
+                "Picovoice engine not available. Install with: pip install pvporcupine pyaudio"
+            )
+        return AsyncWakeWordEngine(config)
+
+    elif engine_type == "whisper":
+        if not WHISPER_WAKE_WORD_AVAILABLE or AsyncWhisperWakeWordEngine is None:
+            raise WakeWordDetectionError(
+                "Whisper wake word engine not available. Ensure Whisper transcription is properly configured."
+            )
+        return AsyncWhisperWakeWordEngine(config)
+
+    else:
+        available_engines = []
+        if PORCUPINE_AVAILABLE:
+            available_engines.append("picovoice")
+        if WHISPER_WAKE_WORD_AVAILABLE:
+            available_engines.append("whisper")
+
+        raise WakeWordDetectionError(
+            f"Unknown wake word engine: {engine_type}. Available engines: {available_engines}"
+        )
+
+
+def get_available_engines() -> dict:
+    """Get information about available wake word engines.
+
+    Returns:
+        Dictionary with engine availability and information
+    """
+    engines = {}
+
+    if PORCUPINE_AVAILABLE:
+        engines["picovoice"] = {
+            "available": True,
+            "description": "Picovoice Porcupine - Commercial wake word engine",
+            "requires": ["pvporcupine", "pyaudio", "access_key"],
+            "pros": ["Very accurate", "Low latency", "Low CPU usage"],
+            "cons": ["Requires API key", "Commercial license for production"],
+        }
+    else:
+        engines["picovoice"] = {
+            "available": False,
+            "description": "Picovoice Porcupine - Not installed",
+            "install": "pip install pvporcupine pyaudio",
+        }
+
+    if WHISPER_WAKE_WORD_AVAILABLE:
+        engines["whisper"] = {
+            "available": True,
+            "description": "Whisper-based wake word detection",
+            "requires": ["whisper", "transcription_service"],
+            "pros": [
+                "No API key needed",
+                "Customizable keywords",
+                "Uses existing Whisper",
+            ],
+            "cons": [
+                "Higher latency",
+                "More CPU intensive",
+                "Requires good audio quality",
+            ],
+        }
+    else:
+        engines["whisper"] = {
+            "available": False,
+            "description": "Whisper wake word engine - Dependencies missing",
+            "install": "Ensure Whisper transcription is properly configured",
+        }
+
+    return engines

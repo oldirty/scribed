@@ -7,6 +7,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional, Union
 from enum import Enum
+from concurrent.futures import ThreadPoolExecutor
+
+# Global thread pool for transcription to prevent thread explosion
+_TRANSCRIPTION_THREAD_POOL: Optional[ThreadPoolExecutor] = None
 
 
 class TranscriptionStatus(Enum):
@@ -131,6 +135,19 @@ class TranscriptionEngine(ABC):
         """Run a synchronous function in a thread pool.
 
         This is useful for running blocking operations without blocking the event loop.
+        Uses a limited thread pool to prevent thread explosion.
         """
+        global _TRANSCRIPTION_THREAD_POOL
+
+        # Create a shared thread pool with limited workers if it doesn't exist
+        if _TRANSCRIPTION_THREAD_POOL is None:
+            # Limit to 4 threads maximum to prevent thread explosion
+            _TRANSCRIPTION_THREAD_POOL = ThreadPoolExecutor(
+                max_workers=4, thread_name_prefix="transcription"
+            )
+            self.logger.info("Created transcription thread pool with 4 workers")
+
         loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, func, *args, **kwargs)
+        return await loop.run_in_executor(
+            _TRANSCRIPTION_THREAD_POOL, func, *args, **kwargs
+        )

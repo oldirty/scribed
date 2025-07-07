@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import re
 import tempfile
 import time
 from pathlib import Path
@@ -12,6 +13,16 @@ from ..transcription.service import TranscriptionService
 from ..wake_word import AsyncWakeWordEngine, WakeWordDetectionError
 from ..audio.microphone_input import AsyncMicrophoneInput, AudioInputError
 from ..power_words import AsyncPowerWordsEngine, PowerWordsSecurityError
+
+# Type for wake word engines (supports both Picovoice and Whisper)
+from typing import Union
+
+try:
+    from ..wake_word.whisper_engine import AsyncWhisperWakeWordEngine
+
+    WakeWordEngineUnion = Union[AsyncWakeWordEngine, AsyncWhisperWakeWordEngine]
+except ImportError:
+    WakeWordEngineUnion = AsyncWakeWordEngine
 
 
 class TranscriptionState(Enum):
@@ -51,7 +62,9 @@ class RealTimeTranscriptionService:
         self.power_words_config = power_words_config or {}
 
         # Components
-        self.wake_word_engine: Optional[AsyncWakeWordEngine] = None
+        self.wake_word_engine: Optional[Any] = (
+            None  # Can be AsyncWakeWordEngine or AsyncWhisperWakeWordEngine
+        )
         self.microphone: Optional[AsyncMicrophoneInput] = None
         self.transcription_service: Optional[TranscriptionService] = None
         self.power_words_engine: Optional[AsyncPowerWordsEngine] = None
@@ -66,6 +79,11 @@ class RealTimeTranscriptionService:
         # Audio buffering
         self._audio_buffer: List[bytes] = []
         self._transcription_start_time: Optional[float] = None
+        self._audio_processing_queue: asyncio.Queue[bytes] = asyncio.Queue(
+            maxsize=100
+        )  # Limit queue size
+        self._audio_processor_task: Optional[asyncio.Task] = None
+        self._silence_task: Optional[asyncio.Task] = None
 
         # Callbacks
         self._on_wake_word_callback: Optional[Callable[[int, str], None]] = None
@@ -85,8 +103,12 @@ class RealTimeTranscriptionService:
         try:
             # Initialize wake word engine
             if not self.wake_word_engine:
-                self.wake_word_engine = AsyncWakeWordEngine(self.wake_word_config)
-                self.logger.info("Wake word engine initialized")
+                from ..wake_word import create_wake_word_engine
+
+                self.wake_word_engine = create_wake_word_engine(self.wake_word_config)
+                self.logger.info(
+                    f"Wake word engine initialized: {self.wake_word_config.get('engine', 'picovoice')}"
+                )
 
             # Initialize microphone
             if not self.microphone:
@@ -133,7 +155,20 @@ class RealTimeTranscriptionService:
             # Start wake word detection
             if not self.wake_word_engine:
                 raise RuntimeError("Wake word engine not initialized")
-            await self.wake_word_engine.start_listening(self._on_wake_word_detected)
+
+            # Check if this is a Whisper-based wake word engine
+            if hasattr(self.wake_word_engine, "queue_audio_data"):
+                # Whisper wake word engine - needs audio data from our microphone
+                await self.wake_word_engine.start_listening(self._on_wake_word_detected)
+
+                # Start microphone for wake word detection
+                if not self.microphone:
+                    raise RuntimeError("Microphone not initialized")
+                await self.microphone.start_recording(self._on_wake_word_audio_data)
+
+            else:
+                # Picovoice engine - has its own audio input
+                await self.wake_word_engine.start_listening(self._on_wake_word_detected)
 
             self.logger.info("Real-time transcription service started")
 
@@ -160,6 +195,11 @@ class RealTimeTranscriptionService:
 
         self._set_state(TranscriptionState.IDLE)
         self.logger.info("Real-time transcription service stopped")
+
+    def _on_wake_word_audio_data(self, audio_data: bytes) -> None:
+        """Pass audio data to Whisper wake word engine (if applicable)."""
+        if self.wake_word_engine and hasattr(self.wake_word_engine, "queue_audio_data"):
+            self.wake_word_engine.queue_audio_data(audio_data)
 
     async def _on_wake_word_detected(
         self, keyword_index: int, keyword_name: str
@@ -195,8 +235,23 @@ class RealTimeTranscriptionService:
                 raise RuntimeError("Microphone not initialized")
             await self.microphone.start_recording(self._on_audio_data_sync)
 
-            # Start silence timeout task
-            asyncio.create_task(self._silence_timeout_task())
+            # Start silence timeout task (ensure only one is running)
+            if self._silence_task and not self._silence_task.done():
+                self._silence_task.cancel()
+                try:
+                    await self._silence_task
+                except asyncio.CancelledError:
+                    pass
+            self._silence_task = asyncio.create_task(self._silence_timeout_task())
+
+            # Start audio processing task (ensure only one is running)
+            if self._audio_processor_task and not self._audio_processor_task.done():
+                self._audio_processor_task.cancel()
+                try:
+                    await self._audio_processor_task
+                except asyncio.CancelledError:
+                    pass
+            self._audio_processor_task = asyncio.create_task(self._audio_processor())
 
             self.logger.info("Active transcription started")
 
@@ -212,6 +267,22 @@ class RealTimeTranscriptionService:
 
         self._transcription_active = False
 
+        # Cancel audio processor task
+        if self._audio_processor_task and not self._audio_processor_task.done():
+            self._audio_processor_task.cancel()
+            try:
+                await self._audio_processor_task
+            except asyncio.CancelledError:
+                pass
+
+        # Cancel silence timeout task
+        if self._silence_task and not self._silence_task.done():
+            self._silence_task.cancel()
+            try:
+                await self._silence_task
+            except asyncio.CancelledError:
+                pass
+
         # Stop microphone
         if self.microphone:
             await self.microphone.stop_recording()
@@ -220,8 +291,15 @@ class RealTimeTranscriptionService:
         if self._audio_buffer:
             await self._process_final_audio()
 
-        # Clear buffer
+        # Clear buffer and queue
         self._audio_buffer = []
+
+        # Clear any remaining audio data from the queue
+        while not self._audio_processing_queue.empty():
+            try:
+                self._audio_processing_queue.get_nowait()
+            except asyncio.QueueEmpty:
+                break
 
         # Return to wake word listening
         self._set_state(TranscriptionState.LISTENING_FOR_WAKE_WORD)
@@ -230,12 +308,39 @@ class RealTimeTranscriptionService:
 
     def _on_audio_data_sync(self, audio_data: bytes) -> None:
         """Synchronous wrapper for audio data callback."""
-        # Create a task to handle the async audio processing
+        if not self._transcription_active:
+            return
+
+        # Put audio data in queue for sequential processing
         try:
-            asyncio.create_task(self._on_audio_data(audio_data))
-        except RuntimeError:
-            # If no event loop is running, we can't process async
-            self.logger.warning("No event loop available for audio processing")
+            # Non-blocking put - if queue is full, drop the data to prevent overflow
+            try:
+                self._audio_processing_queue.put_nowait(audio_data)
+            except asyncio.QueueFull:
+                # Queue is full, drop this audio chunk to prevent memory issues
+                self.logger.warning("Audio processing queue full, dropping audio chunk")
+        except Exception as e:
+            self.logger.warning(f"Error queuing audio data: {e}")
+
+    async def _audio_processor(self) -> None:
+        """Process audio data from queue sequentially to prevent task explosion."""
+        while self._transcription_active:
+            try:
+                # Wait for audio data with timeout
+                audio_data = await asyncio.wait_for(
+                    self._audio_processing_queue.get(), timeout=1.0
+                )
+
+                # Process the audio data
+                await self._on_audio_data(audio_data)
+
+            except asyncio.TimeoutError:
+                # No audio data received, continue loop
+                continue
+            except Exception as e:
+                self.logger.error(f"Error in audio processor: {e}")
+                # Continue processing other audio data
+                continue
 
     async def _on_audio_data(self, audio_data: bytes) -> None:
         """Handle incoming audio data during active transcription."""
@@ -266,6 +371,9 @@ class RealTimeTranscriptionService:
             # Create temporary file with current audio buffer
             audio_data = b"".join(self._audio_buffer)
 
+            # Clear the buffer after copying to prevent reprocessing same audio
+            self._audio_buffer = []
+
             with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_file:
                 # Write WAV header and data
                 self._write_wav_file(temp_file, audio_data)
@@ -280,21 +388,45 @@ class RealTimeTranscriptionService:
                 result = await self.transcription_service.transcribe_file(temp_path)
 
                 if result.text.strip():
-                    # Check for stop phrase
+                    # Check for stop phrase first
                     if self._check_for_stop_phrase(result.text):
                         self.logger.info("Stop phrase detected")
                         await self._stop_transcription()
                         return
 
-                    # Process power words for partial transcription
-                    await self._process_power_words(result.text)
+                    # Process power words and extract remaining text for dictation
+                    remaining_text = (
+                        await self._process_power_words_and_extract_dictation(
+                            result.text
+                        )
+                    )
 
-                    # Notify callback with partial transcription
-                    if self._on_transcription_callback:
-                        try:
-                            await self._on_transcription_callback(result, True)
-                        except Exception as e:
-                            self.logger.error(f"Error in transcription callback: {e}")
+                    # Only send remaining dictation text to transcription callback
+                    if remaining_text.strip():
+                        # Create a new result object with only the dictation text
+                        from ..transcription.base import (
+                            TranscriptionResult,
+                            TranscriptionStatus,
+                        )
+
+                        dictation_result = TranscriptionResult(
+                            text=remaining_text,
+                            segments=getattr(result, "segments", []),
+                            status=getattr(
+                                result, "status", TranscriptionStatus.COMPLETED
+                            ),
+                        )
+
+                        # Notify callback with partial dictation (after power word removal)
+                        if self._on_transcription_callback:
+                            try:
+                                await self._on_transcription_callback(
+                                    dictation_result, True
+                                )
+                            except Exception as e:
+                                self.logger.error(
+                                    f"Error in transcription callback: {e}"
+                                )
 
             finally:
                 # Clean up temp file
@@ -334,16 +466,40 @@ class RealTimeTranscriptionService:
 
                 result = await self.transcription_service.transcribe_file(temp_path)
 
-                # Process power words for final transcription
+                # Process power words and extract remaining dictation text
                 if result.text.strip():
-                    await self._process_power_words(result.text)
+                    remaining_text = (
+                        await self._process_power_words_and_extract_dictation(
+                            result.text
+                        )
+                    )
 
-                # Notify callback with final transcription
-                if self._on_transcription_callback:
-                    try:
-                        await self._on_transcription_callback(result, False)
-                    except Exception as e:
-                        self.logger.error(f"Error in final transcription callback: {e}")
+                    # Only send remaining dictation text to transcription callback
+                    if remaining_text.strip():
+                        # Create a new result object with only the dictation text
+                        from ..transcription.base import (
+                            TranscriptionResult,
+                            TranscriptionStatus,
+                        )
+
+                        dictation_result = TranscriptionResult(
+                            text=remaining_text,
+                            segments=getattr(result, "segments", []),
+                            status=getattr(
+                                result, "status", TranscriptionStatus.COMPLETED
+                            ),
+                        )
+
+                        # Notify callback with final dictation (after power word removal)
+                        if self._on_transcription_callback:
+                            try:
+                                await self._on_transcription_callback(
+                                    dictation_result, False
+                                )
+                            except Exception as e:
+                                self.logger.error(
+                                    f"Error in final transcription callback: {e}"
+                                )
 
             finally:
                 # Clean up temp file
@@ -471,21 +627,291 @@ class RealTimeTranscriptionService:
             "transcription": True,  # Should always be available with Whisper
         }
 
-    async def _confirm_power_word_execution(self) -> bool:
-        """Confirmation callback for power word execution.
+    async def _confirm_power_word_execution(
+        self, command: str = "", command_type: str = "unknown"
+    ) -> bool:
+        """Enhanced confirmation callback for power word execution.
 
-        In a real implementation, this would show a UI prompt or use voice confirmation.
-        For now, we'll auto-approve safe commands and log dangerous ones.
+        This method implements multiple confirmation strategies:
+        1. Voice confirmation (listening for "yes"/"no")
+        2. Safety assessment based on command content
+        3. Configurable timeout and retry logic
+
+        Args:
+            command: The command that will be executed
+            command_type: Type of command (safe/dangerous/unknown)
 
         Returns:
             True to allow execution, False to deny
         """
-        # For safety, we'll require explicit confirmation for power words
-        # In a full implementation, this could be a voice prompt, GUI dialog, etc.
-        self.logger.warning(
-            "Power word execution requires confirmation - auto-denying for safety"
+        if not self.power_words_config.get("require_confirmation", True):
+            # If confirmation is disabled, allow execution
+            self.logger.info(
+                f"Power word confirmation disabled, allowing command: {command}"
+            )
+            return True
+
+        # Assess command safety
+        safety_level = self._assess_command_safety(command)
+
+        # Auto-deny dangerous commands unless explicitly allowed
+        if safety_level == "dangerous":
+            dangerous_keywords = self.power_words_config.get("dangerous_keywords", [])
+            if any(
+                keyword.lower() in command.lower() for keyword in dangerous_keywords
+            ):
+                self.logger.warning(f"Dangerous command auto-denied: {command}")
+                return False
+
+        # Auto-approve safe commands if configured
+        if safety_level == "safe" and self.power_words_config.get(
+            "auto_approve_safe", False
+        ):
+            self.logger.info(f"Safe command auto-approved: {command}")
+            return True
+
+        # Use voice confirmation for unknown or potentially dangerous commands
+        confirmation_method = self.power_words_config.get(
+            "confirmation_method", "voice"
         )
-        return False  # Deny by default for security
+
+        if confirmation_method == "voice":
+            return await self._voice_confirmation(command, safety_level)
+        elif confirmation_method == "log_only":
+            self.logger.info(f"Log-only mode: would execute command: {command}")
+            return self.power_words_config.get("log_only_approve", False)
+        else:
+            # Default to deny for unknown confirmation methods
+            self.logger.warning(
+                f"Unknown confirmation method '{confirmation_method}', denying command: {command}"
+            )
+            return False
+
+    def _assess_command_safety(self, command: str) -> str:
+        """Assess the safety level of a command.
+
+        Args:
+            command: Command to assess
+
+        Returns:
+            "safe", "dangerous", or "unknown"
+        """
+        command_lower = command.lower()
+
+        # Check for dangerous keywords
+        dangerous_keywords = self.power_words_config.get(
+            "dangerous_keywords",
+            [
+                "delete",
+                "format",
+                "sudo",
+                "admin",
+                "reboot",
+                "shutdown",
+                "rm -rf",
+                "del /f",
+                "format c:",
+                "registry",
+                "taskkill",
+                "net user",
+            ],
+        )
+
+        if any(keyword.lower() in command_lower for keyword in dangerous_keywords):
+            return "dangerous"
+
+        # Check for safe patterns (applications, websites, simple shortcuts)
+        safe_patterns = [
+            r"\.lnk$",  # Windows shortcuts
+            r"^https?://",  # URLs
+            r"explorer\.exe",  # File explorer
+            r"notepad",  # Simple applications
+            r"chrome\.exe",  # Browser
+            r"start menu",  # Start menu navigation
+        ]
+
+        for pattern in safe_patterns:
+            if re.search(pattern, command_lower):
+                return "safe"
+
+        # Check allowed commands list
+        allowed_commands = self.power_words_config.get("allowed_commands", [])
+        if any(allowed.lower() in command_lower for allowed in allowed_commands):
+            return "safe"
+
+        return "unknown"
+
+    async def _voice_confirmation(self, command: str, safety_level: str) -> bool:
+        """Handle voice-based confirmation for power word execution.
+
+        Args:
+            command: Command to confirm
+            safety_level: Safety assessment of the command
+
+        Returns:
+            True if user confirms, False otherwise
+        """
+        timeout = self.power_words_config.get("confirmation_timeout", 10)
+        max_retries = self.power_words_config.get("confirmation_retries", 2)
+
+        self.logger.info(
+            f"Requesting voice confirmation for {safety_level} command: {command}"
+        )
+
+        for attempt in range(max_retries + 1):
+            try:
+                # Instead of stopping/starting transcription, use a separate confirmation listener
+                # This avoids recursive task cancellation issues
+                confirmation_result = await self._listen_for_confirmation_safe(timeout)
+
+                if confirmation_result is not None:
+                    return confirmation_result
+
+                # If we get here, no clear response was detected
+                if attempt < max_retries:
+                    self.logger.info(
+                        f"No clear confirmation received, retrying ({attempt + 1}/{max_retries})"
+                    )
+                    await asyncio.sleep(1)
+                else:
+                    self.logger.warning(
+                        "Maximum confirmation retries exceeded, denying command"
+                    )
+                    return False
+
+            except Exception as e:
+                self.logger.error(f"Error during voice confirmation: {e}")
+                return False
+
+        return False
+
+    async def _listen_for_confirmation_safe(self, timeout: float) -> Optional[bool]:
+        """Safe confirmation listener that doesn't interfere with main transcription.
+
+        Args:
+            timeout: Maximum time to wait for response
+
+        Returns:
+            True for "yes", False for "no", None for unclear/timeout
+        """
+        # Create a separate microphone instance for confirmation to avoid conflicts
+        try:
+            from ..audio.microphone_input import AsyncMicrophoneInput
+
+            confirmation_mic = AsyncMicrophoneInput(self.microphone_config)
+
+            confirmation_buffer = []
+            start_time = time.time()
+
+            def confirmation_audio_handler(audio_data: bytes) -> None:
+                """Synchronous audio handler for confirmation."""
+                confirmation_buffer.append(audio_data)
+
+            await confirmation_mic.start_recording(confirmation_audio_handler)
+
+            try:
+                # Wait for timeout or sufficient audio
+                while time.time() - start_time < timeout:
+                    await asyncio.sleep(0.2)
+
+                    # Process audio every 1-2 seconds
+                    if len(confirmation_buffer) >= 8:  # Roughly 1.6 seconds of audio
+                        audio_data = b"".join(confirmation_buffer)
+                        confirmation_buffer.clear()
+
+                        # Transcribe and check for yes/no
+                        response = await self._transcribe_confirmation_audio(audio_data)
+                        if response is not None:
+                            return response
+
+                # Process any remaining audio
+                if confirmation_buffer:
+                    audio_data = b"".join(confirmation_buffer)
+                    response = await self._transcribe_confirmation_audio(audio_data)
+                    return response
+
+            finally:
+                await confirmation_mic.stop_recording()
+
+            return None
+
+        except Exception as e:
+            self.logger.error(f"Error in safe confirmation listener: {e}")
+            return None
+
+    async def _transcribe_confirmation_audio(self, audio_data: bytes) -> Optional[bool]:
+        """Transcribe audio and check for confirmation keywords.
+
+        Args:
+            audio_data: Raw audio data
+
+        Returns:
+            True for affirmative, False for negative, None for unclear
+        """
+        if not audio_data or not self.transcription_service:
+            return None
+
+        try:
+            # Create temporary WAV file
+            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_file:
+                self._write_wav_file(temp_file, audio_data)
+                temp_path = temp_file.name
+
+            try:
+                # Transcribe the audio
+                result = await self.transcription_service.transcribe_file(temp_path)
+                text = result.text.lower().strip()
+
+                if not text:
+                    return None
+
+                self.logger.info(f"Confirmation transcription: '{text}'")
+
+                # Check for affirmative responses
+                affirmative_keywords = [
+                    "yes",
+                    "yeah",
+                    "yep",
+                    "confirm",
+                    "approve",
+                    "ok",
+                    "okay",
+                    "sure",
+                    "proceed",
+                ]
+                negative_keywords = [
+                    "no",
+                    "nope",
+                    "cancel",
+                    "deny",
+                    "stop",
+                    "abort",
+                    "negative",
+                ]
+
+                # Check for clear affirmative
+                if any(keyword in text for keyword in affirmative_keywords):
+                    self.logger.info("Affirmative confirmation detected")
+                    return True
+
+                # Check for clear negative
+                if any(keyword in text for keyword in negative_keywords):
+                    self.logger.info("Negative confirmation detected")
+                    return False
+
+                # No clear response
+                return None
+
+            finally:
+                # Clean up temp file
+                try:
+                    Path(temp_path).unlink()
+                except Exception:
+                    pass
+
+        except Exception as e:
+            self.logger.error(f"Error transcribing confirmation audio: {e}")
+            return None
 
     async def _process_power_words(self, transcription_text: str) -> None:
         """Process transcription text for power words and execute commands.
@@ -504,6 +930,78 @@ class RealTimeTranscriptionService:
                 self.logger.info(f"Executed {executed_count} power word commands")
         except Exception as e:
             self.logger.error(f"Error processing power words: {e}")
+
+    async def _process_power_words_and_extract_dictation(
+        self, transcription_text: str
+    ) -> str:
+        """Process power words and return remaining text for dictation.
+
+        Args:
+            transcription_text: The transcribed text to analyze
+
+        Returns:
+            Remaining text after power word removal for dictation
+        """
+        if not self.power_words_engine:
+            # No power words engine, return all text for dictation
+            return transcription_text
+
+        try:
+            # Get the power words mappings to identify command phrases
+            mappings = self.power_words_config.get("mappings", {})
+
+            remaining_text = transcription_text
+            executed_count = 0
+
+            # Check each power word mapping
+            for phrase, command in mappings.items():
+                phrase_lower = phrase.lower()
+                text_lower = remaining_text.lower()
+
+                # Check if the power word phrase is in the text
+                if phrase_lower in text_lower:
+                    self.logger.info(f"Power word '{phrase}' detected in transcription")
+
+                    # Execute the power word command
+                    try:
+                        result = await self.power_words_engine.execute_command_async(
+                            command
+                        )
+                        if result:
+                            executed_count += 1
+                            self.logger.info(f"Executed power word command: {command}")
+
+                            # Remove the power word phrase from the text
+                            # Find the exact position and remove it
+                            phrase_start = text_lower.find(phrase_lower)
+                            if phrase_start >= 0:
+                                # Remove the phrase and clean up extra spaces
+                                before = remaining_text[:phrase_start]
+                                after = remaining_text[phrase_start + len(phrase) :]
+                                remaining_text = (before + " " + after).strip()
+                                remaining_text = " ".join(
+                                    remaining_text.split()
+                                )  # Clean up multiple spaces
+                        else:
+                            self.logger.warning(
+                                f"Power word command execution failed or denied: {command}"
+                            )
+                    except Exception as e:
+                        self.logger.error(
+                            f"Error executing power word command '{command}': {e}"
+                        )
+
+            if executed_count > 0:
+                self.logger.info(
+                    f"Executed {executed_count} power word commands, remaining text: '{remaining_text}'"
+                )
+
+            return remaining_text
+
+        except Exception as e:
+            self.logger.error(f"Error processing power words: {e}")
+            # On error, return original text to ensure dictation continues
+            return transcription_text
 
     def _check_for_stop_phrase(self, text: str) -> bool:
         """Check if transcription contains the stop phrase.

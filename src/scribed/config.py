@@ -57,6 +57,11 @@ class PowerWordsConfig(BaseModel):
     enabled: bool = Field(default=False)
     mappings: Dict[str, str] = Field(default_factory=dict)
     require_confirmation: bool = Field(default=True)
+    confirmation_method: str = Field(default="voice")  # "voice", "log_only"
+    confirmation_timeout: float = Field(default=10.0)  # seconds
+    confirmation_retries: int = Field(default=2)
+    auto_approve_safe: bool = Field(default=False)
+    log_only_approve: bool = Field(default=False)
     allowed_commands: List[str] = Field(default_factory=list)
     blocked_commands: List[str] = Field(default_factory=list)
     max_command_length: int = Field(default=100)
@@ -72,23 +77,25 @@ class PowerWordsConfig(BaseModel):
         ]
     )
 
-    @field_validator("mappings")
-    @classmethod
-    def validate_mappings(cls, v: Dict[str, str]) -> Dict[str, str]:
-        """Validate power word mappings for security."""
+    @model_validator(mode="after")
+    def validate_mappings_with_max_length(self) -> "PowerWordsConfig":
+        """Validate power word mappings for security using the configured max_command_length."""
         validated = {}
-        for phrase, command in v.items():
+        for phrase, command in self.mappings.items():
             # Convert phrase to lowercase for consistency
             phrase = phrase.lower().strip()
             command = command.strip()
 
-            # Basic security checks
-            if len(command) > 100:
-                raise ValueError(f"Command too long: {command[:50]}...")
+            # Basic security checks using the configured max_command_length
+            if len(command) > self.max_command_length:
+                raise ValueError(
+                    f"Command too long (>{self.max_command_length} chars): {command[:50]}..."
+                )
 
             validated[phrase] = command
 
-        return validated
+        self.mappings = validated
+        return self
 
 
 class APIConfig(BaseModel):

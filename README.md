@@ -5,7 +5,7 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: GPLv3](https://img.shields.io/badge/License-GPLv3-yellow.svg)](https://opensource.org/license/gpl-3-0)
 
-## This is all generated code, that I have yet to fully review. Run at your own risk...
+## This is all generated code, that I have yet to fully review. Run at your own risk... but it mostly kinda works on my machine?
 
 A powerful audio transcription daemon that provides wake word detection, voice commands, and both real-time and batch transcription capabilities.
 
