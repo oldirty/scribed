@@ -20,6 +20,7 @@ A powerful audio transcription daemon that provides wake word detection, voice c
 - [x] **REST API Framework**: FastAPI-based API with health checks, status endpoints, and job tracking architecture
 - [x] **CLI Interface**: Complete Click-based CLI with help system, configuration management, and daemon control
 - [x] **Audio Processing**: Enhanced Whisper integration with multiple backend support (openai-whisper, faster-whisper)
+- [x] **Audio Preprocessing**: Real-time noise reduction, volume normalization, and spectral filtering for improved transcription quality
 - [x] **Transcription Engines**: Support for local Whisper and OpenAI API transcription
 - [x] **Multiple Audio Formats**: Support for .wav, .mp3, .flac, .mp4, .ogg, and more
 - [x] **Wake Word Detection**: Real-time wake word activation using Picovoice Porcupine
@@ -114,7 +115,7 @@ pip install -e .
 pip install scribed
 
 # With optional features
-pip install scribed[wake_word,whisper,openai]
+pip install scribed[wake_word,whisper,openai,audio_processing]
 ```
 
 #### 🔧 Development Installation
@@ -132,6 +133,9 @@ pip install -e ".[wake_word]"
 
 # For Whisper support
 pip install -e ".[whisper]"
+
+# For audio preprocessing (noise reduction, volume normalization)
+pip install -e ".[audio_processing]"
 ```
 
 **Windows Users:** Use `.\make.bat` instead of `make` for development commands:

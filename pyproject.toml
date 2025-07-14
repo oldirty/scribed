@@ -64,6 +64,12 @@ wake_word = [
     "pvporcupine>=3.0.0",
     "pyaudio>=0.2.11",
 ]
+# Audio preprocessing for noise reduction and volume normalization
+audio_processing = [
+    "scipy>=1.10.0",
+    "librosa>=0.10.0",
+    "noisereduce>=2.0.0",
+]
 
 [project.scripts]
 scribed = "scribed.cli:main"

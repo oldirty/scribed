@@ -5,7 +5,7 @@ import logging
 import struct
 import threading
 import time
-from typing import Callable, Optional, AsyncGenerator, Any
+from typing import Callable, Optional, AsyncGenerator, Any, TYPE_CHECKING
 from collections import deque
 
 try:
@@ -17,6 +17,16 @@ except ImportError:
     pyaudio = None  # type: ignore
     np = None  # type: ignore
     AUDIO_AVAILABLE = False
+
+if TYPE_CHECKING:
+    from .preprocessing import AudioPreprocessor
+
+try:
+    from .preprocessing import AudioPreprocessor
+    PREPROCESSING_AVAILABLE = AudioPreprocessor.is_available()
+except ImportError:
+    AudioPreprocessor = None  # type: ignore
+    PREPROCESSING_AVAILABLE = False
 
 
 class AudioInputError(Exception):
@@ -38,6 +48,7 @@ class MicrophoneInput:
                 - channels: Number of channels (default: 1)
                 - chunk_size: Buffer size in frames (default: 1024)
                 - format: Audio format (default: paInt16)
+                - preprocessing: Audio preprocessing configuration (optional)
         """
         self.logger = logging.getLogger(__name__)
 
@@ -51,6 +62,22 @@ class MicrophoneInput:
         self.channels = config.get("channels", 1)
         self.chunk_size = config.get("chunk_size", 1024)
         self.format = getattr(pyaudio, config.get("format", "paInt16"))
+
+        # Audio preprocessing
+        self.preprocessor: Optional[Any] = None
+        preprocessing_config = config.get("preprocessing", {})
+        if preprocessing_config.get("enabled", False) and PREPROCESSING_AVAILABLE:
+            try:
+                if AudioPreprocessor is not None:
+                    self.preprocessor = AudioPreprocessor(preprocessing_config)
+                    self.logger.info("Audio preprocessing enabled")
+            except Exception as e:
+                self.logger.warning(f"Failed to initialize audio preprocessing: {e}")
+        elif preprocessing_config.get("enabled", False):
+            self.logger.warning(
+                "Audio preprocessing requested but dependencies not available. "
+                "Install with: pip install 'scribed[audio_processing]'"
+            )
 
         # Audio components
         self.audio: Optional[Any] = None  # pyaudio.PyAudio when available
@@ -173,13 +200,47 @@ class MicrophoneInput:
                 # Read audio chunk
                 data = self.stream.read(self.chunk_size, exception_on_overflow=False)  # type: ignore
 
-                # Add to buffer
-                self._audio_buffer.append(data)
+                # Apply preprocessing if enabled
+                processed_data = data
+                if self.preprocessor is not None and np is not None and pyaudio is not None:
+                    try:
+                        # Convert bytes to numpy array for processing
+                        if self.format == pyaudio.paInt16:
+                            audio_array = np.frombuffer(data, dtype=np.int16)
+                        elif self.format == pyaudio.paFloat32:
+                            audio_array = np.frombuffer(data, dtype=np.float32)
+                        else:
+                            # Fallback to int16 for other formats
+                            audio_array = np.frombuffer(data, dtype=np.int16)
 
-                # Call callback with audio data
+                        # Process audio
+                        processed_array = self.preprocessor.process_audio(audio_array, self.sample_rate)
+                        
+                        # Convert back to bytes
+                        if self.format == pyaudio.paInt16:
+                            # Ensure data is in proper range and convert to int16
+                            processed_array = np.clip(processed_array, -1.0, 1.0)
+                            processed_array = (processed_array * 32767).astype(np.int16)
+                        elif self.format == pyaudio.paFloat32:
+                            processed_array = processed_array.astype(np.float32)
+                        else:
+                            # Fallback conversion
+                            processed_array = np.clip(processed_array, -1.0, 1.0)
+                            processed_array = (processed_array * 32767).astype(np.int16)
+                        
+                        processed_data = processed_array.tobytes()
+                        
+                    except Exception as e:
+                        self.logger.warning(f"Audio preprocessing failed: {e}")
+                        processed_data = data  # Use original data on preprocessing error
+
+                # Add to buffer
+                self._audio_buffer.append(processed_data)
+
+                # Call callback with processed audio data
                 if self._callback:
                     try:
-                        self._callback(data)
+                        self._callback(processed_data)
                     except Exception as e:
                         self.logger.error(f"Error in audio callback: {e}")
 
@@ -212,7 +273,7 @@ class MicrophoneInput:
 
     def get_info(self) -> dict:
         """Get information about the microphone input."""
-        return {
+        info = {
             "device_index": self.device_index,
             "sample_rate": self.sample_rate,
             "channels": self.channels,
@@ -221,7 +282,14 @@ class MicrophoneInput:
             "is_recording": self._is_recording,
             "available": AUDIO_AVAILABLE,
             "buffer_size": len(self._audio_buffer),
+            "preprocessing_available": PREPROCESSING_AVAILABLE,
+            "preprocessing_enabled": self.preprocessor is not None,
         }
+        
+        if self.preprocessor is not None:
+            info["preprocessing_config"] = self.preprocessor.get_config()
+            
+        return info
 
     @staticmethod
     def is_available() -> bool:
