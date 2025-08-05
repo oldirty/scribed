@@ -144,7 +144,7 @@ power_words:
 
 # --- GENERAL TRANSCRIPTION SETTINGS ---
 transcription:
-  provider: google_speech # or whisper, aws_transcribe
+  provider: whisper # or openai
   language: en-US
 
 output:
@@ -157,12 +157,16 @@ output:
 ## 7. API and Monitoring 📡
 A simple REST API is exposed for control and monitoring.
 
-`GET /status`: Returns the daemon's current state (listening_for_wake_word, transcribing, processing_batch, idle).
+`GET /health`: Health check endpoint to verify service availability.
 
-`POST /start_transcription`: Manually forces the daemon into active transcription mode.
+`GET /status`: Returns the current engine status and active sessions.
 
-`POST /stop_transcription`: Manually stops transcription and returns to the wake word listening state.
+`POST /sessions`: Create a new transcription session with optional configuration overrides.
 
-`POST /reload_wakeword`: Reloads the wake word engine with a new model from the config file.
+`POST /sessions/{session_id}/start`: Start a specific transcription session.
 
-`GET /jobs/{job_id}`: (Batch mode) Returns the status of a specific file transcription job.
+`POST /sessions/{session_id}/stop`: Stop a specific transcription session.
+
+`POST /transcribe/file`: Upload and transcribe an audio file directly.
+
+`POST /record-to-clipboard`: Record audio from microphone and transcribe to clipboard.

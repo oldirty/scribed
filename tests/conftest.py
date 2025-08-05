@@ -9,10 +9,8 @@ from .mocks import MockMicrophoneInput, MockAsyncMicrophoneInput, MockWakeWordEn
 @pytest.fixture(autouse=True)
 def mock_microphone_input():
     """Automatically mock microphone input for all tests."""
-    with patch(
-        "scribed.audio.microphone_input.MicrophoneInput", MockMicrophoneInput
-    ), patch(
-        "scribed.audio.microphone_input.AsyncMicrophoneInput", MockAsyncMicrophoneInput
+    with patch("scribed.audio.microphone.MicrophoneInput", MockMicrophoneInput), patch(
+        "scribed.audio.microphone.AsyncMicrophoneInput", MockAsyncMicrophoneInput
     ):
         yield
 

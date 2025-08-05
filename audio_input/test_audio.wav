@@ -1,9 +1,0 @@
-This is a dummy audio file for testing the Scribed file watcher functionality.
-
-In a real implementation, this would be actual audio data in WAV, MP3, or FLAC format.
-For now, we're just testing that the file watcher detects new files and creates
-transcription placeholders.
-
-File: test_audio.wav
-Purpose: Testing batch transcription workflow
-Expected output: A corresponding .txt file in the transcripts directory

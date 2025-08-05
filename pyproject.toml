@@ -18,16 +18,15 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
-    "fastapi>=0.104.0",
-    "uvicorn[standard]>=0.24.0",
-    "pydantic>=2.0.0",
-    "pyyaml>=6.0",
-    "watchdog>=3.0.0",
-    "sounddevice>=0.4.0",
-    "numpy>=1.24.0",
-    "requests>=2.31.0",
-    "click>=8.1.0",
-    "aiofiles>=23.0.0",
+    "fastapi>=0.110.0",
+    "uvicorn[standard]>=0.27.0",
+    "pydantic>=2.5.0",
+    "pyyaml>=6.0.1",
+    "watchdog>=4.0.0",
+    "sounddevice>=0.4.6",
+    "numpy>=1.26.0",
+    "requests>=2.32.0",
+    "click>=8.1.7",
 ]
 
 [project.optional-dependencies]
@@ -41,20 +40,11 @@ dev = [
     "pre-commit>=3.4.0",
     "types-PyYAML>=6.0.0",
     "types-requests>=2.31.0",
-    "httpx>=0.24.0",
-]
-# Text-to-speech for realistic test audio (optional, may require system dependencies)
-tts = [
-    "gTTS>=2.3.0",
-    "pydub>=0.25.0",
-    "pyttsx3>=2.90",
-]
-gui = [
-    "PyQt6>=6.5.0",
+    "httpx>=0.25.0",
 ]
 whisper = [
     "openai-whisper>=20231117",
-    "torch>=1.9.0,<2.5.0",
+    "torch>=2.0.0,<2.5.0",
     "faster-whisper>=0.10.0",
 ]
 openai = [
@@ -64,11 +54,9 @@ wake_word = [
     "pvporcupine>=3.0.0",
     "pyaudio>=0.2.11",
 ]
-# Audio preprocessing for noise reduction and volume normalization
+# Audio file processing for format support
 audio_processing = [
-    "scipy>=1.10.0",
     "librosa>=0.10.0",
-    "noisereduce>=2.0.0",
 ]
 
 [project.scripts]

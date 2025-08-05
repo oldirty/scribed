@@ -5,30 +5,32 @@ import logging
 import tempfile
 import numpy as np
 import wave
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, Dict, Any
 import uvicorn
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from .. import __version__
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
+from pathlib import Path
 
 if TYPE_CHECKING:
     from ..config import Config
-    from ..daemon import ScribedDaemon
+    from ..core.engine import ScribedEngine
 
 logger = logging.getLogger(__name__)
 
 
-class StartTranscriptionRequest(BaseModel):
-    """Request model for starting transcription."""
+class SessionRequest(BaseModel):
+    """Request model for session operations."""
 
-    mode: Optional[str] = None
+    session_type: Optional[str] = "default"
+    config_overrides: Optional[Dict[str, Any]] = None
 
 
-class StopTranscriptionRequest(BaseModel):
-    """Request model for stopping transcription."""
+class TranscribeFileRequest(BaseModel):
+    """Request model for file transcription."""
 
-    save_output: bool = True
+    provider: Optional[str] = None
 
 
 class RecordToClipboardRequest(BaseModel):
@@ -38,18 +40,16 @@ class RecordToClipboardRequest(BaseModel):
     provider: Optional[str] = None
 
 
-class TranscriptionJobResponse(BaseModel):
-    """Response model for transcription job status."""
+class SessionResponse(BaseModel):
+    """Response model for session operations."""
 
-    job_id: str
+    session_id: str
     status: str
-    progress: float
-    result: Optional[str] = None
-    error: Optional[str] = None
+    message: Optional[str] = None
 
 
-class ClipboardTranscriptionResponse(BaseModel):
-    """Response model for clipboard transcription."""
+class TranscriptionResponse(BaseModel):
+    """Response model for transcription results."""
 
     success: bool
     text: Optional[str] = None
@@ -58,15 +58,15 @@ class ClipboardTranscriptionResponse(BaseModel):
 
 
 class APIServer:
-    """FastAPI server for daemon control."""
+    """FastAPI server for Scribed engine control."""
 
-    def __init__(self, config: "Config", daemon: "ScribedDaemon") -> None:
+    def __init__(self, config: "Config", engine: "ScribedEngine") -> None:
         """Initialize API server."""
         self.config = config
-        self.daemon = daemon
+        self.engine = engine
         self.app = FastAPI(
             title="Scribed API",
-            description="Audio transcription daemon API",
+            description="Audio transcription service API",
             version=__version__,
         )
         self.server: Optional[uvicorn.Server] = None
@@ -77,52 +77,148 @@ class APIServer:
 
         @self.app.get("/status")
         async def get_status():
-            """Get daemon status."""
-            return JSONResponse(self.daemon.get_status())
+            """Get engine status."""
+            return JSONResponse(self.engine.get_status())
 
-        @self.app.post("/start")
-        async def start_transcription(request: StartTranscriptionRequest):
-            """Start transcription service."""
-            try:
-                if self.daemon._running:
-                    return JSONResponse(
-                        {"message": "Transcription already running"}, status_code=200
-                    )
-
-                # For now, just return success - actual implementation pending
-                return JSONResponse(
-                    {
-                        "message": "Transcription started",
-                        "mode": request.mode or "default",
-                    }
-                )
-            except Exception as e:
-                logger.error(f"Error starting transcription: {e}")
-                raise HTTPException(status_code=500, detail=str(e))
-
-        @self.app.post("/stop")
-        async def stop_transcription(request: StopTranscriptionRequest):
-            """Stop transcription service."""
-            try:
-                # For now, just return success - actual implementation pending
-                return JSONResponse(
-                    {
-                        "message": "Transcription stopped",
-                        "output_saved": request.save_output,
-                    }
-                )
-            except Exception as e:
-                logger.error(f"Error stopping transcription: {e}")
-                raise HTTPException(status_code=500, detail=str(e))
-
-        @self.app.post("/transcribe")
-        async def submit_transcription():
-            """Submit audio for transcription."""
-            # TODO: Implement file upload and transcription queueing
+        @self.app.get("/health")
+        async def health_check():
+            """Health check endpoint."""
             return JSONResponse(
-                {"message": "Transcription endpoint not yet implemented"},
-                status_code=501,
+                {
+                    "status": "healthy" if self.engine.is_healthy() else "unhealthy",
+                    "service": "scribed",
+                }
             )
+
+        @self.app.post("/sessions")
+        async def create_session(request: SessionRequest):
+            """Create a new transcription session."""
+            try:
+                session_id = self.engine.create_session(
+                    session_type=request.session_type or "default",
+                    config_overrides=request.config_overrides,
+                )
+                return SessionResponse(
+                    session_id=session_id,
+                    status="created",
+                    message="Session created successfully",
+                )
+            except Exception as e:
+                logger.error(f"Error creating session: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+
+        @self.app.get("/sessions")
+        async def list_sessions():
+            """List all active sessions."""
+            try:
+                sessions = self.engine.list_sessions()
+                return JSONResponse({"sessions": sessions})
+            except Exception as e:
+                logger.error(f"Error listing sessions: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+
+        @self.app.get("/sessions/{session_id}")
+        async def get_session_status(session_id: str):
+            """Get session status."""
+            try:
+                session = self.engine.get_session(session_id)
+                if not session:
+                    raise HTTPException(status_code=404, detail="Session not found")
+                return JSONResponse(session.get_status_info())
+            except HTTPException:
+                raise
+            except Exception as e:
+                logger.error(f"Error getting session status: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+
+        @self.app.post("/sessions/{session_id}/start")
+        async def start_session(session_id: str):
+            """Start a transcription session."""
+            try:
+                await self.engine.start_session(session_id)
+                return SessionResponse(
+                    session_id=session_id,
+                    status="started",
+                    message="Session started successfully",
+                )
+            except ValueError as e:
+                raise HTTPException(status_code=404, detail=str(e))
+            except Exception as e:
+                logger.error(f"Error starting session: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+
+        @self.app.post("/sessions/{session_id}/stop")
+        async def stop_session(session_id: str):
+            """Stop a transcription session."""
+            try:
+                await self.engine.stop_session(session_id)
+                return SessionResponse(
+                    session_id=session_id,
+                    status="stopped",
+                    message="Session stopped successfully",
+                )
+            except Exception as e:
+                logger.error(f"Error stopping session: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+
+        @self.app.post("/transcribe/file")
+        async def transcribe_file(
+            file: UploadFile = File(...),
+            request: TranscribeFileRequest = TranscribeFileRequest(),
+        ):
+            """Transcribe an uploaded audio file."""
+            try:
+                # Save uploaded file to temporary location
+                with tempfile.NamedTemporaryFile(
+                    suffix=Path(file.filename).suffix, delete=False
+                ) as temp_file:
+                    temp_path = Path(temp_file.name)
+                    content = await file.read()
+                    temp_file.write(content)
+
+                try:
+                    # Get transcription service from engine
+                    service = self.engine.transcription_service
+                    if not service or not service.is_available():
+                        raise HTTPException(
+                            status_code=503,
+                            detail="Transcription service not available",
+                        )
+
+                    # Override provider if requested
+                    if request.provider:
+                        config = self.config.transcription.model_dump()
+                        config["provider"] = request.provider
+                        from ..transcription.service import TranscriptionService
+
+                        service = TranscriptionService(config)
+
+                    # Transcribe the file
+                    result = await service.transcribe_file(temp_path)
+
+                    if result.status.value == "completed":
+                        return TranscriptionResponse(
+                            success=True,
+                            text=result.text,
+                            processing_time=result.processing_time,
+                        )
+                    else:
+                        return TranscriptionResponse(
+                            success=False, error=f"Transcription failed: {result.error}"
+                        )
+
+                finally:
+                    # Clean up temporary file
+                    try:
+                        temp_path.unlink()
+                    except Exception:
+                        pass
+
+            except HTTPException:
+                raise
+            except Exception as e:
+                logger.error(f"Error transcribing file: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
 
         @self.app.post("/record-to-clipboard")
         async def record_to_clipboard(request: RecordToClipboardRequest):
@@ -130,13 +226,12 @@ class APIServer:
             try:
                 # Import required modules for audio recording
                 import sounddevice as sd
-                from pathlib import Path
                 from ..transcription.service import TranscriptionService
                 from ..clipboard import set_clipboard_text, is_clipboard_available
 
                 # Check clipboard availability
                 if not is_clipboard_available():
-                    return ClipboardTranscriptionResponse(
+                    return TranscriptionResponse(
                         success=False,
                         error="Clipboard functionality not available. On Linux, install xclip or xsel.",
                     )
@@ -180,12 +275,18 @@ class APIServer:
                         wav_file.writeframes(audio_data.tobytes())
 
                 try:
-                    # Initialize transcription service
-                    service = TranscriptionService(config)
+                    # Use engine's transcription service or create new one with override
+                    service = self.engine.transcription_service
+                    if request.provider:
+                        service = TranscriptionService(config)
 
-                    if not service.is_available():
-                        engine_info = service.get_engine_info()
-                        return ClipboardTranscriptionResponse(
+                    if not service or not service.is_available():
+                        engine_info = (
+                            service.get_engine_info()
+                            if service
+                            else "Service unavailable"
+                        )
+                        return TranscriptionResponse(
                             success=False,
                             error=f"Transcription service not available: {engine_info}",
                         )
@@ -199,19 +300,19 @@ class APIServer:
                             logger.info(
                                 "Transcription copied to clipboard successfully"
                             )
-                            return ClipboardTranscriptionResponse(
+                            return TranscriptionResponse(
                                 success=True,
                                 text=result.text,
                                 processing_time=result.processing_time,
                             )
                         else:
-                            return ClipboardTranscriptionResponse(
+                            return TranscriptionResponse(
                                 success=False,
                                 text=result.text,
                                 error="Failed to copy to clipboard",
                             )
                     else:
-                        return ClipboardTranscriptionResponse(
+                        return TranscriptionResponse(
                             success=False, error=f"Transcription failed: {result.error}"
                         )
 
@@ -228,23 +329,10 @@ class APIServer:
                 else:
                     error_msg = f"Import error: {e}"
                 logger.error(error_msg)
-                return ClipboardTranscriptionResponse(success=False, error=error_msg)
+                return TranscriptionResponse(success=False, error=error_msg)
             except Exception as e:
                 logger.error(f"Error in record_to_clipboard: {e}")
-                return ClipboardTranscriptionResponse(success=False, error=str(e))
-
-        @self.app.get("/jobs/{job_id}")
-        async def get_job_status(job_id: str):
-            """Get transcription job status."""
-            # TODO: Implement job tracking
-            return TranscriptionJobResponse(
-                job_id=job_id, status="pending", progress=0.0
-            )
-
-        @self.app.get("/health")
-        async def health_check():
-            """Health check endpoint."""
-            return JSONResponse({"status": "healthy", "service": "scribed"})
+                return TranscriptionResponse(success=False, error=str(e))
 
     async def start(self) -> None:
         """Start the API server."""

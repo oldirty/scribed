@@ -1,68 +1,30 @@
-# Scribed Configuration Example
-# Copy this file to config.yaml and modify as needed
-
-# Source mode: 'file' for batch processing, 'microphone' for real-time
-source_mode: file
-
-# File watcher settings for batch mode
-file_watcher:
+# Core audio settings (simplified structure)
+audio:
+  source: microphone  # microphone or file
+  
+  # Microphone settings (flattened)
+  device_index: null  # null for default device
+  sample_rate: 16000
+  channels: 1
+  
+  # File watcher settings (flattened)
   watch_directory: ./audio_input
   output_directory: ./transcripts
   supported_formats: [".wav", ".mp3", ".flac"]
 
-# Microphone settings for real-time mode
-microphone:
-  device_index: null  # null for default device
-  sample_rate: 16000
-  channels: 1
-  chunk_size: 1024
-  
-  # Audio preprocessing for noise reduction and volume normalization
-  preprocessing:
-    enabled: false  # Enable audio preprocessing (requires: pip install 'scribed[audio_processing]')
-    volume_normalization: true  # Enable automatic volume normalization
-    noise_reduction: true       # Enable background noise reduction
-    target_db: -20.0           # Target volume level in dB
-    noise_gate_threshold: -40.0 # Silence threshold in dB (sounds below this are reduced)
-    spectral_gating: true      # Enable advanced spectral noise reduction
-    high_pass_cutoff: 85       # Remove frequencies below this (Hz) - reduces low rumble
-    low_pass_cutoff: null      # Remove frequencies above this (Hz) - null to disable
+# Transcription engine settings (simplified - removed SpeechLM2)
+transcription:
+  provider: whisper  # whisper (local) or openai (API)
+  model: base        # whisper: base/small/medium/large, openai: whisper-1
+  language: en       # Language code (en, es, fr, etc.)
+  api_key: null      # Required for OpenAI (can use OPENAI_API_KEY env var)
 
-# Wake word detection settings
-wake_word:
-  engine: picovoice
-  access_key: null  # Required: Get free access key from https://console.picovoice.ai/
-                    # Can also be set via PICOVOICE_ACCESS_KEY environment variable
-  keywords: ["porcupine"]  # Built-in keywords: porcupine, alexa, hey google, hey siri, jarvis, computer, americano, blueberry, bumblebee, grapefruit, grasshopper, picovoice, pineapple, terminator
-  sensitivities: [0.5]  # Detection sensitivity (0.0-1.0) for each keyword
-  model_path: null  # Path to custom wake word model
-  silence_timeout: 15
-  stop_phrase: "stop listening"
-
-# Voice command settings (SECURITY: disabled by default)
-power_words:
-  enabled: false
-  require_confirmation: true  # Require confirmation before executing commands
-  max_command_length: 100     # Maximum length of commands
-  allowed_commands: []        # Whitelist of allowed commands (empty = allow all)
-  blocked_commands:           # Blacklist of dangerous commands
-    - "rm"
-    - "delete" 
-    - "format"
-    - "sudo"
-    - "admin"
-  dangerous_keywords:         # Keywords that trigger warnings
-    - "reboot"
-    - "shutdown"
-    - "kill"
-  mappings:
-    # Example mappings (uncomment and modify as needed):
-    # "open browser": "firefox"
-    # "open notes": "code ~/notes"
-    # "show weather": "curl wttr.in"
-    # "list files": "ls -la"
-    # "what time is it": "date"
-    # "show calendar": "cal"
+# Output settings
+output:
+  format: txt              # txt or json
+  save_to_file: true       # Save transcriptions to files
+  copy_to_clipboard: false # Copy to clipboard
+  log_file_path: ./logs/transcription.log
 
 # API server settings
 api:
@@ -70,15 +32,28 @@ api:
   port: 8080
   debug: false
 
-# Transcription engine settings
-transcription:
-  provider: whisper  # whisper, google_speech, aws_transcribe
-  language: en-US
-  model: base  # For whisper: tiny, base, small, medium, large
-  api_key: null  # Required for cloud providers
+# Wake word detection (truly optional with feature flag)
+wake_word:
+  enabled: false           # Must be explicitly enabled
+  engine: picovoice        # picovoice (recommended) or whisper
+  keywords: ["porcupine"]  # Built-in Picovoice keywords
+  access_key: null         # Get free key from https://console.picovoice.ai/
+                          # or set PICOVOICE_ACCESS_KEY environment variable
 
-# Output settings
-output:
-  format: txt  # txt, json, srt
-  log_to_file: true
-  log_file_path: ./logs/transcription.log
+# Voice commands (simplified - basic command mapping only)
+# Could we use something like https://github.com/ExtensityAI/symbolicai to make "power words" more useful?
+power_words:
+  enabled: false           # SECURITY WARNING: Executes system commands!
+  max_command_length: 100  # Maximum command length for security
+  mappings:
+    # Example safe mappings (uncomment and modify as needed):
+    # "open notepad": "notepad.exe"
+    # "open calculator": "calc.exe"
+    # "open browser": "start chrome"
+    # "show desktop": "explorer shell:desktop"
+    # 
+    # SECURITY NOTES:
+    # - Only simple, safe commands are recommended
+    # - Dangerous commands (rm, del, format, shutdown) are blocked
+    # - Commands are executed from your home directory
+    # - Use with extreme caution in production environments

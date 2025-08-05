@@ -19,7 +19,11 @@ class PowerWordsSecurityError(Exception):
 
 
 class PowerWordsEngine:
-    """Engine for detecting and executing voice commands with security controls."""
+    """Simplified engine for basic voice command mapping.
+
+    This is a basic implementation that maps voice phrases to system commands.
+    It uses simple string matching for reliability and security.
+    """
 
     def __init__(self, config: PowerWordsConfig):
         """Initialize power words engine.
@@ -29,30 +33,22 @@ class PowerWordsEngine:
         """
         self.config = config
         self.enabled = config.enabled
-        self.mappings = {phrase.lower(): cmd for phrase, cmd in config.mappings.items()}
-        self.require_confirmation = config.require_confirmation
-        self.allowed_commands = [cmd.lower() for cmd in config.allowed_commands]
-        self.blocked_commands = [cmd.lower() for cmd in config.blocked_commands]
-        self.dangerous_keywords = [kw.lower() for kw in config.dangerous_keywords]
+        self.mappings = {
+            phrase.lower().strip(): cmd.strip()
+            for phrase, cmd in config.mappings.items()
+        }
         self.max_command_length = config.max_command_length
 
-        # Compile regex patterns for efficient matching
-        self._compile_patterns()
-
         logger.info(f"PowerWordsEngine initialized with {len(self.mappings)} mappings")
+        if self.enabled and self.mappings:
+            logger.info(f"Available voice commands: {list(self.mappings.keys())}")
 
-    def _compile_patterns(self) -> None:
-        """Compile regex patterns for power word detection."""
-        self.patterns = {}
-        for phrase in self.mappings.keys():
-            # Create flexible pattern that allows for some variation
-            # e.g., "open browser" matches "please open browser now"
-            words = phrase.split()
-            pattern = r"\b" + r"\s+".join(re.escape(word) for word in words) + r"\b"
-            self.patterns[phrase] = re.compile(pattern, re.IGNORECASE)
+    def _normalize_text(self, text: str) -> str:
+        """Normalize text for consistent matching."""
+        return text.lower().strip()
 
     def detect_power_words(self, text: str) -> List[tuple]:
-        """Detect power words in transcribed text.
+        """Detect power words in transcribed text using simple string matching.
 
         Args:
             text: Transcribed text to analyze
@@ -60,22 +56,22 @@ class PowerWordsEngine:
         Returns:
             List of tuples (phrase, command) for detected power words
         """
-        if not self.enabled:
+        if not self.enabled or not self.mappings:
             return []
 
         detected = []
-        text_lower = text.lower()
+        normalized_text = self._normalize_text(text)
 
-        for phrase, pattern in self.patterns.items():
-            if pattern.search(text_lower):
-                command = self.mappings[phrase]
+        # Use simple substring matching for reliability
+        for phrase, command in self.mappings.items():
+            if phrase in normalized_text:
                 detected.append((phrase, command))
                 logger.info(f"Detected power word: '{phrase}' -> '{command}'")
 
         return detected
 
     def validate_command(self, command: str) -> bool:
-        """Validate command for security.
+        """Basic command validation for security.
 
         Args:
             command: Command to validate
@@ -94,38 +90,31 @@ class PowerWordsEngine:
                 f"Command too long: {len(command)} > {self.max_command_length}"
             )
 
-        # Check blocked commands
-        if self.blocked_commands:
-            for blocked in self.blocked_commands:
-                if blocked in command_lower:
-                    raise PowerWordsSecurityError(
-                        f"Command contains blocked term: {blocked}"
-                    )
-
-        # Check allowed commands (if whitelist is configured)
-        if self.allowed_commands:
-            command_parts = command_lower.split()
-            if command_parts and command_parts[0] not in self.allowed_commands:
-                raise PowerWordsSecurityError(
-                    f"Command not in allowed list: {command_parts[0]}"
-                )
-
-        # Check for dangerous keywords
-        for dangerous in self.dangerous_keywords:
+        # Basic security check for extremely dangerous patterns
+        dangerous_patterns = [
+            "rm -rf",
+            "del /",
+            "format",
+            "shutdown /f",
+            "reboot",
+            "sudo rm",
+        ]
+        for dangerous in dangerous_patterns:
             if dangerous in command_lower:
-                logger.warning(f"Command contains dangerous keyword: {dangerous}")
-                # Don't raise error, but log warning
+                raise PowerWordsSecurityError(
+                    f"Command blocked for safety: contains '{dangerous}'"
+                )
 
         return True
 
     def execute_command(
         self, command: str, confirm_callback: Optional[Callable[[], bool]] = None
     ) -> bool:
-        """Execute a power word command.
+        """Execute a power word command (simplified - no confirmation required).
 
         Args:
             command: Command to execute
-            confirm_callback: Optional callback for user confirmation
+            confirm_callback: Optional callback for user confirmation (unused in simplified version)
 
         Returns:
             True if command was executed successfully
@@ -133,12 +122,6 @@ class PowerWordsEngine:
         try:
             # Validate command security
             self.validate_command(command)
-
-            # Request confirmation if required
-            if self.require_confirmation and confirm_callback:
-                if not confirm_callback():
-                    logger.info(f"Command execution cancelled by user: {command}")
-                    return False
 
             logger.info(f"Executing power word command: {command}")
 
@@ -200,7 +183,11 @@ class PowerWordsEngine:
 
 
 class AsyncPowerWordsEngine:
-    """Async version of PowerWordsEngine for integration with real-time transcription."""
+    """Simplified async wrapper for PowerWordsEngine.
+
+    This provides basic async support for power words without complex confirmation
+    or concurrent execution features.
+    """
 
     def __init__(self, config: PowerWordsConfig):
         """Initialize async power words engine.
@@ -209,64 +196,9 @@ class AsyncPowerWordsEngine:
             config: Power words configuration
         """
         self.engine = PowerWordsEngine(config)
-        self.confirmation_callback: Optional[Callable[[str, str], Awaitable[bool]]] = (
-            None
-        )
-
-    def set_confirmation_callback(
-        self, callback: Callable[[str, str], Awaitable[bool]]
-    ) -> None:
-        """Set async confirmation callback.
-
-        Args:
-            callback: Async function that takes (command, command_type) and returns True if user confirms execution
-        """
-        self.confirmation_callback = callback
-
-    def _assess_command_type(self, command: str) -> str:
-        """Assess the type/safety level of a command.
-
-        Args:
-            command: Command to assess
-
-        Returns:
-            "safe", "dangerous", or "unknown"
-        """
-        command_lower = command.lower()
-
-        # Check for dangerous keywords from config
-        if any(
-            keyword.lower() in command_lower
-            for keyword in self.engine.dangerous_keywords
-        ):
-            return "dangerous"
-
-        # Check for safe patterns (applications, websites, simple shortcuts)
-        import re
-
-        safe_patterns = [
-            r"\.lnk$",  # Windows shortcuts
-            r"^https?://",  # URLs
-            r"explorer\.exe",  # File explorer
-            r"notepad",  # Simple applications
-            r"chrome\.exe",  # Browser
-            r"start menu",  # Start menu navigation
-        ]
-
-        for pattern in safe_patterns:
-            if re.search(pattern, command_lower):
-                return "safe"
-
-        # Check allowed commands list
-        if any(
-            allowed.lower() in command_lower for allowed in self.engine.allowed_commands
-        ):
-            return "safe"
-
-        return "unknown"
 
     async def execute_command_async(self, command: str) -> bool:
-        """Execute command asynchronously.
+        """Execute command asynchronously (simplified).
 
         Args:
             command: Command to execute
@@ -277,14 +209,6 @@ class AsyncPowerWordsEngine:
         try:
             # Validate command security
             self.engine.validate_command(command)
-
-            # Request confirmation if required
-            if self.engine.require_confirmation and self.confirmation_callback:
-                # Assess command type for confirmation
-                command_type = self._assess_command_type(command)
-                if not await self.confirmation_callback(command, command_type):
-                    logger.info(f"Command execution cancelled by user: {command}")
-                    return False
 
             logger.info(f"Executing power word command: {command}")
 
@@ -324,7 +248,7 @@ class AsyncPowerWordsEngine:
             return False
 
     async def process_transcription_async(self, text: str) -> int:
-        """Process transcribed text for power words and execute commands asynchronously.
+        """Process transcribed text for power words and execute commands.
 
         Args:
             text: Transcribed text to process
@@ -335,16 +259,11 @@ class AsyncPowerWordsEngine:
         detected = self.engine.detect_power_words(text)
         executed_count = 0
 
-        # Execute commands concurrently
-        tasks = []
+        # Execute commands sequentially for simplicity and safety
         for phrase, command in detected:
             logger.info(f"Processing power word: '{phrase}' -> '{command}'")
-            task = self.execute_command_async(command)
-            tasks.append(task)
-
-        if tasks:
-            results = await asyncio.gather(*tasks, return_exceptions=True)
-            executed_count = sum(1 for result in results if result is True)
+            if await self.execute_command_async(command):
+                executed_count += 1
 
         return executed_count
 

@@ -1,326 +1,240 @@
-# Scribed - Audio Transcription Daemon
+# Scribed - Audio Transcription Service
 
-[![CI](https://github.com/oldirty/scribed/actions/workflows/ci.yml/badge.svg)](https://github.com/oldirty/scribed/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/oldirty/scribed/branch/main/graph/badge.svg)](https://codecov.io/gh/oldirty/scribed)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: GPLv3](https://img.shields.io/badge/License-GPLv3-yellow.svg)](https://opensource.org/license/gpl-3-0)
 
-## This is all generated code, that I have yet to fully review. Run at your own risk... but it mostly kinda works on my machine?
-
-A powerful audio transcription daemon that provides wake word detection, voice commands, and both real-time and batch transcription capabilities.
+A focused audio transcription service that provides real-time microphone input and file batch processing with multiple transcription engines (Whisper, OpenAI). Built with a clean, maintainable architecture after extensive refactoring to remove complexity and focus on core functionality.
 
 ## Features
 
-### ✅ Current Features
+### ✅ Core Features
 
-- [x] **Project Structure**: Complete Python package with proper setup.py, dependencies, and entry points
-- [x] **Configuration Management**: YAML-based configuration with Pydantic validation and environment variable support
-- [x] **Core Daemon Architecture**: Async daemon with proper state management, signal handling, and graceful shutdown
-- [x] **File Watcher**: Monitors directory for new audio files with real transcription functionality
-- [x] **REST API Framework**: FastAPI-based API with health checks, status endpoints, and job tracking architecture
-- [x] **CLI Interface**: Complete Click-based CLI with help system, configuration management, and daemon control
-- [x] **Audio Processing**: Enhanced Whisper integration with multiple backend support (openai-whisper, faster-whisper)
-- [x] **Audio Preprocessing**: Real-time noise reduction, volume normalization, and spectral filtering for improved transcription quality
-- [x] **Transcription Engines**: Support for local Whisper and OpenAI API transcription
-- [x] **Multiple Audio Formats**: Support for .wav, .mp3, .flac, .mp4, .ogg, and more
-- [x] **Wake Word Detection**: Real-time wake word activation using Picovoice Porcupine
-- [x] **Real-time Transcription**: Microphone input with live transcription and wake word activation
-- [x] **Voice Commands**: Secure power words for voice-activated command execution with safety controls
-- [x] **Testing & CI**: Comprehensive unit tests with pytest and GitHub Actions CI/CD pipeline
-- [x] **Development Tools**: Pre-commit hooks, black formatting, mypy type checking, and development Makefile
-- [x] **Documentation**: Example configuration, API documentation, and development setup guides
+- **Real-time Microphone Transcription**: Live audio capture and transcription from microphone input
+- **File Batch Processing**: Monitor directories for new audio files and automatically transcribe them
+- **Multiple Transcription Engines**: Support for local Whisper and OpenAI API transcription
+- **Multiple Audio Formats**: Support for .wav, .mp3, .flac, and other common audio formats
+- **Clean Architecture**: Modular design with separate audio sources, transcription engines, and output handlers
+- **Configuration Management**: YAML-based configuration with validation and environment variable support
+- **REST API**: FastAPI-based API for programmatic control and integration
+- **CLI Interface**: Complete command-line interface for all operations
 
-### 🚧 Planned Features
+### ✅ Optional Features (Disabled by Default)
 
-- [x] **Multiple transcription engine support** (Whisper ✅, OpenAI API ✅, Google Speech-to-Text 🚧)
-- [x] **Wake word detection with Picovoice Porcupine** ✅
-- [x] **Real-time transcription with low latency** ✅
-- [x] **Voice command execution with security controls** ✅
-- [ ] Desktop GUI with system tray indicator
-- [ ] Performance monitoring and resource management
+- **Wake Word Detection**: Voice activation using Picovoice Porcupine (requires access key)
+- **Power Words**: Voice commands for system automation (security-focused, requires explicit configuration)
+
+### ⚠️ Removed Features (From Previous Versions)
+
+- **SpeechLM2 Integration**: Removed due to complexity - use Whisper or OpenAI instead
+- **Multiple TTS Engines**: Simplified to focus on transcription
+- **Complex Audio Preprocessing**: Kept essential functionality only
+- **GUI Components**: CLI and API only
+
+### ✅ Output Options
+
+- **File Output**: Save transcriptions to text files with customizable naming
+- **Clipboard Integration**: Copy transcriptions directly to system clipboard
+- **Console Output**: Display transcriptions in terminal
+- **Structured Logging**: Detailed logging with configurable levels
 
 ## Quick Start
 
-### Installation Options
+### Installation
 
-Scribed offers multiple installation methods for different platforms:
-
-#### 📦 Package Installers (Recommended)
-
-**Windows:**
-- **Automated Installer**: Run `.\install-windows.ps1` (PowerShell) or `install-windows.bat` (Command Prompt)
-- **MSI Installer**: Download from [GitHub Releases](https://github.com/oldirty/scribed/releases) - Professional installer with Start Menu integration
-- **Portable ZIP**: Extract and run anywhere - No installation required
-
-**Linux (Ubuntu/Debian):**
-```bash
-# Download the .deb package from GitHub Releases, then:
-sudo dpkg -i scribed_*.deb
-sudo apt-get install -f  # Fix any missing dependencies
-```
-
-**Linux (RedHat/CentOS/Fedora):**
-```bash
-# Download the .rpm package from GitHub Releases, then:
-sudo rpm -ivh scribed-*.rpm
-# or with automatic dependency resolution:
-sudo dnf install scribed-*.rpm
-```
-
-#### 🪟 Windows Quick Install
-
-For Windows users, we provide **simple and reliable** installation scripts:
-
-**PowerShell (Recommended):**
-```powershell
-# Simple and reliable installer
-.\install-windows-simple.ps1
-
-# Or automated with menu options
-.\install-windows.ps1 -InstallType VirtualEnv
-```
-
-**Command Prompt:**
-```cmd
-# Simple and reliable installer
-install-windows-simple.bat
-
-# Or automated installer with menu
-install-windows.bat
-```
-
-**One-Command Quick Install:**
-```powershell
-# PowerShell - Creates virtual environment and installs
-python -m venv venv; venv\Scripts\Activate.ps1; python -m pip install --upgrade pip; python -m pip install -e .
-```
-
-**Manual Installation:**
-```powershell
-# User installation (no admin required)
-pip install --user -e .
-
-# Virtual environment (recommended for development)
-python -m venv scribed-env
-scribed-env\Scripts\Activate.ps1
-pip install -e .
-```
-
-> **Note:** The simple installers work with the development code and don't try to install from PyPI (which isn't available yet).
-
-#### 🐍 Python Package (All Platforms)
-
-```bash
-# From PyPI (recommended for Python users)
-pip install scribed
-
-# With optional features
-pip install scribed[wake_word,whisper,openai,audio_processing]
-```
-
-#### 🔧 Development Installation
+#### Development Installation (Current)
 
 ```bash
 # Clone the repository
 git clone https://github.com/oldirty/scribed.git
 cd scribed
 
-# Install in development mode
-pip install -e ".[dev]"
+# Install core dependencies
+pip install -e .
 
-# For wake word support
-pip install -e ".[wake_word]"
-
-# For Whisper support
-pip install -e ".[whisper]"
-
-# For audio preprocessing (noise reduction, volume normalization)
-pip install -e ".[audio_processing]"
+# Install with optional features
+pip install -e ".[whisper]"        # Local Whisper transcription
+pip install -e ".[openai]"         # OpenAI API transcription  
+pip install -e ".[wake_word]"      # Wake word detection
+pip install -e ".[dev]"            # Development tools
 ```
 
-**Windows Users:** Use `.\make.bat` instead of `make` for development commands:
+#### Windows Installation
 
-```cmd
-# Windows equivalent of make commands
-.\make.bat install-dev
-.\make.bat test
-.\make.bat format
+Windows users can use the provided installation scripts:
+
+```powershell
+# PowerShell - Simple installer
+.\install-windows-simple.ps1
+
+# Or create virtual environment manually
+python -m venv venv
+venv\Scripts\Activate.ps1
+pip install -e .
 ```
+
+#### Optional Dependencies
+
+- **Whisper**: `pip install -e ".[whisper]"` - Local transcription with OpenAI Whisper
+- **OpenAI**: `pip install -e ".[openai]"` - Cloud transcription via OpenAI API
+- **Wake Word**: `pip install -e ".[wake_word]"` - Voice activation (requires Picovoice key)
+- **Audio Processing**: `pip install -e ".[audio_processing]"` - Enhanced audio preprocessing
 
 ### Basic Usage
 
 ```bash
-# Start the daemon
+# Start the transcription service
 scribed start
 
-# Check daemon status
+# Start with custom configuration
+scribed --config config.yaml start
+
+# Check service status
 scribed status
 
-# Stop the daemon
+# Stop the service (use Ctrl+C or API)
 scribed stop
 
-# 🆕 NEW: Direct file transcription
+# Direct file transcription
 scribed transcribe audio_file.wav
 scribed transcribe audio_file.mp3 --provider whisper
 scribed transcribe audio_file.wav --output transcript.txt --provider openai
 
-# Start with custom config
-scribed start --config /path/to/config.yaml
+# Record audio and transcribe to clipboard
+scribed record-to-clipboard --duration 30
+scribed record-to-clipboard --provider openai --silent
+
+# View service logs
+scribed logs --lines 100
+
+# Check optional feature status
+scribed features
+
+# Show current configuration
+scribed config
+
+# Migrate old configuration files
+scribed migrate-config old-config.yaml
 ```
 
 ### Configuration
 
-Create a `config.yaml` file:
+Create a `config.yaml` file (see `config.yaml.example` for full reference):
 
 ```yaml
-source_mode: microphone
-file_watcher:
-  watch_directory: \Users\me\.local\scribed\audio_input
-  output_directory: \Users\me\.local\scribed\transcripts
-  supported_formats:
-  - .wav
-  - .mp3
-  - .flac
-microphone:
-  device_index: null
+# Core audio settings
+audio:
+  source: microphone  # microphone or file
+  
+  # Microphone settings
+  device_index: null  # null for default device
   sample_rate: 16000
   channels: 1
-  chunk_size: 1024
-wake_word:
-  engine: picovoice
-  access_key: redacted
-  keywords:
-  - porcupine
-  sensitivities:
-  - 0.5
-  model_path: null
-  silence_timeout: 2
-  stop_phrase: stop listening
-power_words:
-  enabled: true
-  require_confirmation: true
-  confirmation_method: log_only  # voice, log_only
-  confirmation_timeout: 10.0  # seconds
-  confirmation_retries: 2     # number of retries
-  auto_approve_safe: false    # auto-approve safe commands
-  log_only_approve: true     # in log_only mode, approve by default
-  mappings:
-    discord: 'C:\Users\me\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Discord Inc\Discord.lnk'
-    gemini: 'C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Google Chrome.lnk https://gemini.google.com'
-  allowed_commands: []
-  blocked_commands: []
-  max_command_length: 300
-  dangerous_keywords:
-  - delete
-  - format
-  - sudo
-  - admin
-  - reboot
-  - shutdown
+  
+  # File watcher settings
+  watch_directory: ./audio_input
+  output_directory: ./transcripts
+  supported_formats: [".wav", ".mp3", ".flac"]
+
+# Transcription engine settings
+transcription:
+  provider: whisper  # whisper (local) or openai (API)
+  model: base        # whisper: base/small/medium/large, openai: whisper-1
+  language: en       # Language code (en, es, fr, etc.)
+  api_key: null      # Required for OpenAI (can use OPENAI_API_KEY env var)
+
+# Output settings
+output:
+  format: txt              # txt or json
+  save_to_file: true       # Save transcriptions to files
+  copy_to_clipboard: false # Copy to clipboard
+  log_file_path: ./logs/transcription.log
+
+# API server settings
 api:
-  host: 127.0.0.1
+  host: "127.0.0.1"
   port: 8080
   debug: false
-transcription:
-  provider: whisper
-  language: en-US
-  model: base
-  api_key: null
-output:
-  format: txt
-  log_to_file: true
-  log_file_path: \Users\me\.local\scribed\logs\transcription.log
-  enable_clipboard: true
-  clipboard_on_final: true
+
+# Optional features (disabled by default for security)
+
+# Wake word detection (requires Picovoice access key)
+wake_word:
+  enabled: false           # Must be explicitly enabled
+  keywords: ["porcupine"]  # Built-in Picovoice keywords
+  access_key: null         # Get free key from https://console.picovoice.ai/
+
+# Voice commands (SECURITY WARNING: Executes system commands!)
+power_words:
+  enabled: false           # Must be explicitly enabled
+  max_command_length: 100  # Maximum command length for security
+  mappings:
+    # Example safe mappings:
+    # "open notepad": "notepad.exe"
+    # "open calculator": "calc.exe"
 ```
 
-## Wake Word Detection (New! 🎉)
+## Optional Features
 
-Scribed now supports hands-free voice activation using wake words! Simply say your configured wake word and start dictating.
+### Wake Word Detection
 
-### Quick Setup
+Enable hands-free voice activation using Picovoice Porcupine:
 
-1. **Install wake word dependencies:**
+1. **Install dependencies:**
    ```bash
-   pip install ".[wake_word]"
+   pip install -e ".[wake_word]"
    ```
 
 2. **Get a free Picovoice access key** at [console.picovoice.ai](https://console.picovoice.ai/)
 
-3. **Set your access key** (choose one method):
-
-   **Option A: Environment Variable (Recommended)**
-
-   ```bash
-   export PICOVOICE_ACCESS_KEY="your_picovoice_access_key_here"
-   ```
-
-   **Option B: Configuration File**
-
+3. **Configure wake word detection:**
    ```yaml
+   audio:
+     source: microphone
+   
    wake_word:
-     access_key: "your_picovoice_access_key_here"
+     enabled: true  # Must be explicitly enabled
+     keywords: ["porcupine"]
+     access_key: "your_access_key_here"  # Or set PICOVOICE_ACCESS_KEY env var
    ```
 
-4. **Configure for real-time mode:**
-
-   ```yaml
-   source_mode: microphone
-
-   wake_word:
-     access_key: "your_picovoice_access_key_here"
-     keywords: ["porcupine"]  # Built-in wake words available
-     sensitivities: [0.5]
-
-   microphone:
-     device_index: null  # Default microphone
-     sample_rate: 16000
-   ```
-
-5. **Start the daemon:**
-
+4. **Start the service:**
    ```bash
-   scribed daemon --config config.yaml
+   scribed start --config config.yaml
    ```
 
-6. **Say "Porcupine"** to activate, then speak your content!
+### Power Words (Voice Commands)
 
-### Built-in Wake Words
+Execute system commands via voice (use with caution):
 
-Choose from: `porcupine`, `alexa`, `hey google`, `hey siri`, `jarvis`, `computer`, `americano`, `blueberry`, `bumblebee`, `grapefruit`, `grasshopper`, `picovoice`, `pineapple`, `terminator`
-
-📖 **For detailed setup instructions, see [WAKE_WORD_SETUP.md](WAKE_WORD_SETUP.md)**
-
-## Windows Compatibility 🪟
-
-Scribed runs well on Windows with the following considerations:
-
-### ✅ Fully Supported
-- All Python components and dependencies
-- Audio processing (PyAudio, sounddevice)
-- Whisper transcription engines
-- Picovoice Porcupine wake word detection
-- Configuration and CLI commands
-
-### 🔧 Windows-Specific Setup
-- Use `make.bat` instead of `make` for development commands
-- Power words use Windows commands (`dir`, `echo`, `cd`) by default
-- Install Microsoft C++ Build Tools if needed for some dependencies
-
-### 💡 Tips for Windows Users
-
-```cmd
-# Use PowerShell or Command Prompt
-pip install -e ".[dev,wake_word]"
-
-# Development commands
-.\make.bat install-dev
-.\make.bat test
-.\make.bat format
-
-# Run the daemon
-scribed daemon --config config.yaml
+```yaml
+power_words:
+  enabled: true  # SECURITY WARNING: Executes system commands!
+  max_command_length: 100
+  mappings:
+    "open notepad": "notepad.exe"
+    "open calculator": "calc.exe"
 ```
+
+**Security Note**: Power words are disabled by default and should only be enabled in trusted environments.
+
+## Platform Support
+
+### Windows
+- Full support for all core features
+- Audio processing with sounddevice
+- Whisper and OpenAI transcription engines
+- Wake word detection with Picovoice Porcupine
+- Use provided installation scripts for easy setup
+
+### Linux/macOS
+- Full support for all core features
+- Standard Python package installation
+- All optional features supported
+
+### Development Tools
+- Use `make.bat` on Windows or `make` on Linux/macOS
+- Pre-commit hooks and code formatting
+- Comprehensive test suite
 
 ## Development
 
@@ -354,34 +268,55 @@ scribed/
 │   ├── __init__.py
 │   ├── cli.py            # Command-line interface
 │   ├── config.py         # Configuration management
-│   ├── daemon.py         # Main daemon logic
-│   ├── api/              # REST API
-│   ├── audio/            # Audio processing
+│   ├── daemon.py         # Legacy daemon (being phased out)
+│   ├── api/              # REST API server
+│   ├── audio/            # Audio input sources
+│   │   ├── base.py       # AudioSource interface
+│   │   ├── microphone.py # Microphone input
+│   │   └── file_source.py # File-based input
+│   ├── core/             # Core engine architecture
+│   │   ├── engine.py     # Main ScribedEngine
+│   │   └── session.py    # TranscriptionSession
 │   ├── transcription/    # Transcription engines
-│   └── gui/              # GUI components
-├── tests/                # Unit tests
-├── docs/                 # Documentation
-├── .github/workflows/    # CI/CD
-└── config.yaml.example   # Example configuration
+│   │   ├── base.py       # TranscriptionEngine interface
+│   │   ├── whisper_engine.py      # Local Whisper
+│   │   ├── enhanced_whisper_engine.py # Enhanced Whisper
+│   │   └── openai_engine.py       # OpenAI API
+│   ├── output/           # Output handlers
+│   │   ├── handler.py    # OutputHandler
+│   │   ├── file.py       # File output
+│   │   └── clipboard.py  # Clipboard output
+│   ├── wake_word/        # Wake word detection (optional)
+│   └── power_words/      # Voice commands (optional)
+├── tests/                # Comprehensive test suite
+├── config.yaml.example   # Example configuration
+├── MIGRATION_GUIDE.md    # Migration from older versions
+└── pyproject.toml        # Project configuration
 ```
 
 ## API Reference
 
-### REST API Endpoints
+The Scribed service provides a REST API for programmatic control:
 
-- `GET /status` - Get daemon status
-- `POST /start` - Start transcription service
-- `POST /stop` - Stop transcription service
-- `POST /transcribe` - Submit audio for transcription
-- `GET /jobs/{job_id}` - Get transcription job status
+### Key Endpoints
+
+- `GET /health` - Health check
+- `GET /status` - Get engine status and configuration
+- `POST /sessions` - Create transcription session
+- `POST /transcribe/file` - Transcribe uploaded audio file
+- `POST /record-to-clipboard` - Record audio and transcribe to clipboard
 
 ### CLI Commands
 
-- `scribed start` - Start the daemon
-- `scribed stop` - Stop the daemon
-- `scribed status` - Check daemon status
-- `scribed config` - Manage configuration
-- `scribed logs` - View daemon logs
+- `scribed start` - Start the transcription service
+- `scribed stop` - Stop the service (currently requires Ctrl+C)
+- `scribed status` - Check service status and health
+- `scribed transcribe <file>` - Transcribe audio file directly
+- `scribed record-to-clipboard` - Record audio and transcribe to clipboard
+- `scribed config` - Show or save current configuration
+- `scribed features` - Show optional feature status and availability
+- `scribed logs` - View service logs (with --lines option)
+- `scribed migrate-config` - Migrate old configuration files (with --dry-run option)
 
 ## Testing
 
@@ -413,36 +348,58 @@ pytest-watch
 8. Push to the branch (`git push origin feature/amazing-feature`)
 9. Open a Pull Request
 
-## Releases and Packages
+## Getting Started Examples
 
-Scribed provides multiple package formats for easy installation across different platforms:
-
-### 📋 Available Package Types
-
-- **Python Packages**: Wheel and source distributions on PyPI
-- **Linux DEB**: Ubuntu, Debian, and compatible distributions
-- **Linux RPM**: RedHat, CentOS, Fedora, and compatible distributions
-- **Windows MSI**: Professional installer for Windows systems
-- **Windows ZIP**: Portable executable package
-- **Source Archive**: For building from source
-
-### 🚀 Release Process
-
-Releases are automatically created when version tags are pushed:
-
+### Example 1: Basic File Transcription
 ```bash
-# Create and push a release tag
-git tag v1.0.0
-git push origin v1.0.0
+# Install with Whisper support
+pip install -e ".[whisper]"
+
+# Transcribe a single file
+scribed transcribe recording.wav
+
+# Transcribe with specific output location
+scribed transcribe recording.wav --output transcript.txt
 ```
 
-This triggers automated builds for all supported platforms via GitHub Actions.
+### Example 2: Real-time Microphone Transcription
+```bash
+# Create configuration for microphone input
+cat > config.yaml << EOF
+audio:
+  source: microphone
+  sample_rate: 16000
 
-### 📥 Download Packages
+transcription:
+  provider: whisper
+  model: base
 
-All packages are available from [GitHub Releases](https://github.com/oldirty/scribed/releases).
+output:
+  save_to_file: true
+  copy_to_clipboard: true
+EOF
 
-For detailed information about releases and packaging, see [RELEASE_STRATEGY.md](RELEASE_STRATEGY.md).
+# Start the service
+scribed --config config.yaml start
+```
+
+### Example 3: File Batch Processing
+```bash
+# Create configuration for file watching
+cat > config.yaml << EOF
+audio:
+  source: file
+  watch_directory: ./audio_input
+  output_directory: ./transcripts
+
+transcription:
+  provider: whisper
+  model: base
+EOF
+
+# Start the service to monitor directory
+scribed --config config.yaml start
+```
 
 ## Security
 
@@ -456,6 +413,7 @@ This project is licensed under the GPLv3 License - see the [LICENSE](LICENSE) fi
 
 - Built entirely with VSCode + Copilot + Claude Sonnet 4
 - Built with integration for [Whisper](https://github.com/openai/whisper) transcription
+  - But you should be able to drop in any GGML Automatic Speech Recognition model ? Maybe?
 - Wake word detection powered by [Picovoice Porcupine](https://picovoice.ai/platform/porcupine/)
 - Audio processing with [sounddevice](https://python-sounddevice.readthedocs.io/)
 

@@ -1,0 +1,1 @@
+Refer to '.kiro/kiro.md' for all instructions.

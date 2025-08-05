@@ -374,18 +374,24 @@ class AsyncWakeWordEngine:
         return self.engine.get_info()
 
 
-def create_wake_word_engine(config: dict):
+def create_wake_word_engine(config: dict, feature_enabled: bool = True):
     """Factory function to create appropriate wake word engine based on config.
 
     Args:
         config: Configuration dictionary with 'engine' key specifying the engine type
+        feature_enabled: Whether wake word feature is enabled (from feature flags)
 
     Returns:
         Appropriate wake word engine instance
 
     Raises:
-        WakeWordDetectionError: If the specified engine is not available
+        WakeWordDetectionError: If the specified engine is not available or feature is disabled
     """
+    if not feature_enabled:
+        raise WakeWordDetectionError(
+            "Wake word detection is disabled. Enable it in configuration to use this feature."
+        )
+
     engine_type = config.get("engine", "picovoice").lower()
 
     if engine_type == "picovoice":

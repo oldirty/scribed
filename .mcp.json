@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "memory": {
+      "command": "npx",
+      "args": ["@modelcontextprotocol/server-memory"]
+    },
+    "sequential-thinking": {
+      "command": "npx", 
+      "args": ["@modelcontextprotocol/server-sequential-thinking"]
+    }
+  }
+}

@@ -5,7 +5,6 @@ from typing import Dict, List, Optional, Type, Union
 from pathlib import Path
 
 from .base import TranscriptionEngine, TranscriptionResult, TranscriptionStatus
-from .whisper_engine import WhisperEngine
 from .enhanced_whisper_engine import EnhancedWhisperEngine
 from .openai_engine import OpenAIEngine
 from .mock_engine import MockTranscriptionEngine
@@ -14,12 +13,12 @@ from .mock_engine import MockTranscriptionEngine
 class TranscriptionService:
     """Service that manages and provides access to transcription engines."""
 
-    # Registry of available engines
+    # Registry of available engines (simplified - removed complex SpeechLM2)
     ENGINES: Dict[str, Type[TranscriptionEngine]] = {
         "whisper": EnhancedWhisperEngine,  # Use enhanced engine by default
-        "whisper_original": WhisperEngine,  # Keep original for fallback
         "openai": OpenAIEngine,
         "mock": MockTranscriptionEngine,  # For testing
+        # Note: SpeechLM2 removed due to complexity - use whisper or openai for production
     }
 
     def __init__(self, config: dict) -> None:
@@ -77,7 +76,7 @@ class TranscriptionService:
                     "temperature": self.config.get("temperature", 0.0),
                 }
             )
-        elif self.provider == "whisper":
+        elif self.provider in ["whisper", "whisper_original"]:
             base_config.update(
                 {
                     "device": self.config.get("device", "auto"),
